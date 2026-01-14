@@ -28,16 +28,20 @@ jobs:
 
       - name: Unlock release branch
         run: |
-          # Check if branch protection exists (404 = no protection, other errors should fail)
-          HTTP_CODE=$(gh api repos/${{ github.repository }}/branches/release/protection -i 2>&1 | head -1 | awk '{print $2}')
-          if [ "$HTTP_CODE" = "200" ]; then
+          # Check if branch protection exists using exit code first
+          set +e
+          RESPONSE=$(gh api repos/${{ github.repository }}/branches/release/protection 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -eq 0 ]; then
             echo "Removing branch protection..."
             gh api repos/${{ github.repository }}/branches/release/protection -X DELETE
             echo "Branch protection removed."
-          elif [ "$HTTP_CODE" = "404" ]; then
+          elif echo "$RESPONSE" | grep -q "404"; then
             echo "No branch protection found, skipping unlock."
           else
-            echo "::error::Failed to check branch protection (HTTP $HTTP_CODE)"
+            echo "::error::Failed to check branch protection: $RESPONSE"
             exit 1
           fi
         env:
@@ -94,11 +98,21 @@ jobs:
           
           # Small delay for API consistency, then verify protection
           sleep 2
-          PROTECTION=$(gh api repos/${{ github.repository }}/branches/release/protection 2>/dev/null)
+          set +e
+          PROTECTION=$(gh api repos/${{ github.repository }}/branches/release/protection 2>&1)
+          API_EXIT=$?
+          set -e
+          
+          if [ $API_EXIT -ne 0 ]; then
+            echo "::error::Failed to fetch branch protection: $PROTECTION"
+            exit 1
+          fi
+          
           if echo "$PROTECTION" | jq -e '.lock_branch == true' > /dev/null 2>&1; then
             echo "Branch protection verified (lock_branch=true)."
           else
-            echo "::error::Failed to verify branch protection. The release branch may be unprotected!"
+            echo "::error::Branch protection applied but lock_branch is not true!"
+            echo "Response: $PROTECTION"
             exit 1
           fi
         env:
@@ -116,6 +130,9 @@ jobs:
         if: failure()
         run: |
           echo "::warning::Workflow failed, attempting to re-lock release branch..."
+          # Note: We use || true pattern here intentionally. If the main workflow failed,
+          # we want to attempt cleanup but not mask the original failure.
+          # The warning above and any API error will still be visible in logs.
           gh api repos/${{ github.repository }}/branches/release/protection \
             -X PUT \
             -H "Accept: application/vnd.github+json" \
@@ -125,6 +142,8 @@ jobs:
             -f required_pull_request_reviews=null \
             -f restrictions=null \
             -f allow_force_pushes=false \
-            -f allow_deletions=false || echo "::error::Failed to re-lock branch!"
+            -f allow_deletions=false \
+            && echo "Branch re-locked successfully." \
+            || echo "::error::CRITICAL: Failed to re-lock branch! Manual intervention required."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
