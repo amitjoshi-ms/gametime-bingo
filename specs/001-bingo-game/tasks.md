@@ -18,14 +18,14 @@
 
 **Purpose**: Project initialization with Svelte 5 + Trystero stack
 
-- [ ] T001 Initialize Svelte 5 project with Vite in repository root: `pnpm create vite@latest . --template svelte-ts`
-- [ ] T002 Install dependencies: `pnpm add trystero svelte@^5`
-- [ ] T003 Install dev dependencies: `pnpm add -D vitest @testing-library/svelte playwright @sveltejs/vite-plugin-svelte typescript @types/node`
-- [ ] T004 [P] Configure tsconfig.json with strict mode per plan.md
-- [ ] T005 [P] Configure vite.config.ts with Svelte plugin
-- [ ] T006 [P] Configure eslint.config.js and .prettierrc
-- [ ] T007 [P] Configure playwright.config.ts for E2E tests
-- [ ] T008 Create directory structure per plan.md: src/lib/game/, src/lib/network/, src/lib/stores/, src/lib/utils/, src/components/, tests/
+- [x] T001 Initialize Svelte 5 project with Vite in repository root: `pnpm create vite@latest . --template svelte-ts`
+- [x] T002 Install dependencies: `pnpm add trystero svelte@^5`
+- [x] T003 Install dev dependencies: `pnpm add -D vitest @testing-library/svelte playwright @sveltejs/vite-plugin-svelte typescript @types/node`
+- [x] T004 [P] Configure tsconfig.json with strict mode per plan.md
+- [x] T005 [P] Configure vite.config.ts with Svelte plugin
+- [x] T006 [P] Configure eslint.config.js and .prettierrc
+- [x] T007 [P] Configure playwright.config.ts for E2E tests
+- [x] T008 Create directory structure per plan.md: src/lib/game/, src/lib/network/, src/lib/stores/, src/lib/utils/, src/components/, tests/
 
 ---
 
@@ -37,37 +37,37 @@
 
 ### Type Definitions
 
-- [ ] T009 [P] Define TypeScript types in src/lib/game/types.ts: GameStatus, ConnectionStatus, LineType, LineDefinition, Player, BingoCard, GameSession
-- [ ] T010 [P] Define message payload types in src/lib/network/messages.ts: all 12 P2P message interfaces from contracts/p2p-protocol.md
+- [x] T009 [P] Define TypeScript types in src/lib/game/types.ts: GameStatus, ConnectionStatus, LineType, LineDefinition, Player, BingoCard, GameSession
+- [x] T010 [P] Define message payload types in src/lib/network/messages.ts: all 12 P2P message interfaces from contracts/p2p-protocol.md
 
 ### Pure Game Logic (Unit-Testable)
 
-- [ ] T011 [P] Implement card generation in src/lib/game/card.ts: generateCard(), createEmptyMarked(), shuffleArray()
-- [ ] T012 [P] Implement line detection in src/lib/game/lines.ts: LINES constant, findCompletedLines(), getNewlyCompletedLines()
-- [ ] T013 [P] Implement validation helpers in src/lib/game/validation.ts: isValidNumber(), isNumberCalled(), canCallNumber()
-- [ ] T014 Implement session state management in src/lib/game/session.ts: createSession(), addPlayer(), removePlayer(), canStartGame(), callNumber(), advanceTurn(), checkForWinner()
+- [x] T011 [P] Implement card generation in src/lib/game/card.ts: generateCard(), createEmptyMarked(), shuffleArray()
+- [x] T012 [P] Implement line detection in src/lib/game/lines.ts: LINES constant, findCompletedLines(), getNewlyCompletedLines()
+- [x] T013 [P] Implement validation helpers in src/lib/game/validation.ts: isValidNumber(), isNumberCalled(), canCallNumber()
+- [x] T014 Implement session state management in src/lib/game/session.ts: createSession(), addPlayer(), removePlayer(), canStartGame(), callNumber(), advanceTurn(), checkForWinner()
 
 ### Utilities
 
-- [ ] T015 [P] Implement localStorage helpers in src/lib/utils/storage.ts: saveState(), loadState(), clearState() with PersistedState interface
-- [ ] T016 [P] Implement secure room code generator in src/lib/utils/random.ts: generateRoomCode() using Web Crypto API
+- [x] T015 [P] Implement localStorage helpers in src/lib/utils/storage.ts: saveState(), loadState(), clearState() with PersistedState interface
+- [x] T016 [P] Implement secure room code generator in src/lib/utils/random.ts: generateRoomCode() using Web Crypto API
 
 ### Svelte Stores
 
-- [ ] T017 Implement game session store in src/lib/stores/game.svelte.ts: reactive state for GameSession, derived computed values
-- [ ] T018 Implement local player store in src/lib/stores/player.svelte.ts: player ID, name, card, completed lines (private data)
+- [x] T017 Implement game session store in src/lib/stores/game.svelte.ts: reactive state for GameSession, derived computed values
+- [x] T018 Implement local player store in src/lib/stores/player.svelte.ts: player ID, name, card, completed lines (private data)
 
 ### Network Layer Foundation
 
-- [ ] T019 Implement Trystero room management in src/lib/network/room.ts: createRoom(), joinRoom(), leaveRoom(), room lifecycle
-- [ ] T020 Implement message actions in src/lib/network/host.ts: host-specific message handlers (player-join, call-number, declare-winner)
-- [ ] T021 Implement state sync in src/lib/network/sync.ts: sendSyncState(), onSyncState(), delta message handlers
+- [x] T019 Implement Trystero room management in src/lib/network/room.ts: createRoom(), joinRoom(), leaveRoom(), room lifecycle
+- [x] T020 Implement message actions in src/lib/network/host.ts: host-specific message handlers (player-join, call-number, declare-winner)
+- [x] T021 Implement state sync in src/lib/network/sync.ts: sendSyncState(), onSyncState(), delta message handlers
 
 ### Base UI Components
 
-- [ ] T022 [P] Create Button.svelte in src/components/ui/Button.svelte with accessible touch targets (≥48px)
-- [ ] T023 [P] Create Input.svelte in src/components/ui/Input.svelte for text input with validation
-- [ ] T024 [P] Create Modal.svelte in src/components/ui/Modal.svelte for dialogs
+- [x] T022 [P] Create Button.svelte in src/components/ui/Button.svelte with accessible touch targets (≥48px)
+- [x] T023 [P] Create Input.svelte in src/components/ui/Input.svelte for text input with validation
+- [x] T024 [P] Create Modal.svelte in src/components/ui/Modal.svelte for dialogs
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -81,15 +81,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T025 [P] [US1] Create Lobby.svelte in src/components/Lobby.svelte: display room code, player list, Start Game button
-- [ ] T026 [P] [US1] Create PlayerList.svelte in src/components/PlayerList.svelte: show player names and connection status
-- [ ] T027 [P] [US1] Create ConnectionStatus.svelte in src/components/ConnectionStatus.svelte: network status indicator
-- [ ] T028 [US1] Implement create game flow in src/lib/network/room.ts: generateRoomCode(), create Trystero room, become host
-- [ ] T029 [US1] Implement join game flow in src/lib/network/room.ts: join existing room by code, send player-join message
-- [ ] T030 [US1] Handle player-join in host.ts: validate player count (max 5), add to session, broadcast sync-state
-- [ ] T031 [US1] Implement player count validation: minimum 2 to enable Start, maximum 5 with "Game is full" error
-- [ ] T032 [US1] Create home screen in App.svelte: "Create Game" and "Join Game" buttons, routing to Lobby
-- [ ] T033 [US1] Add URL query param support: ?room=ABC123 for direct join links
+- [x] T025 [P] [US1] Create Lobby.svelte in src/components/Lobby.svelte: display room code, player list, Start Game button
+- [x] T026 [P] [US1] Create PlayerList.svelte in src/components/PlayerList.svelte: show player names and connection status
+- [x] T027 [P] [US1] Create ConnectionStatus.svelte in src/components/ConnectionStatus.svelte: network status indicator
+- [x] T028 [US1] Implement create game flow in src/lib/network/room.ts: generateRoomCode(), create Trystero room, become host
+- [x] T029 [US1] Implement join game flow in src/lib/network/room.ts: join existing room by code, send player-join message
+- [x] T030 [US1] Handle player-join in host.ts: validate player count (max 5), add to session, broadcast sync-state
+- [x] T031 [US1] Implement player count validation: minimum 2 to enable Start, maximum 5 with "Game is full" error
+- [x] T032 [US1] Create home screen in App.svelte: "Create Game" and "Join Game" buttons, routing to Lobby
+- [x] T033 [US1] Add URL query param support: ?room=ABC123 for direct join links
 
 **Checkpoint**: User Story 1 complete - players can create and join sessions
 
@@ -103,17 +103,17 @@
 
 ### Implementation for User Story 2
 
-- [ ] T034 [P] [US2] Create Cell.svelte in src/components/Cell.svelte: single card cell with marked/unmarked states
-- [ ] T035 [P] [US2] Create Card.svelte in src/components/Card.svelte: 5x5 grid using CSS Grid, displays player's card
-- [ ] T036 [P] [US2] Create NumberPad.svelte in src/components/NumberPad.svelte: 1-25 number buttons, disable called numbers
-- [ ] T037 [P] [US2] Create CalledNumbers.svelte in src/components/CalledNumbers.svelte: chronological list of called numbers
-- [ ] T038 [US2] Create Game.svelte in src/components/Game.svelte: main game screen layout with card, numberpad, players
-- [ ] T039 [US2] Implement call-number handler in host.ts: validate turn, validate number not called, broadcast number-called
-- [ ] T040 [US2] Implement number-called handler in sync.ts: update local calledNumbers, mark number on local card
-- [ ] T041 [US2] Implement markNumber() integration: call markNumber() on player's BingoCard when number-called received
-- [ ] T042 [US2] Implement turn advancement: advanceTurn() after each number-called, update currentTurnIndex
-- [ ] T043 [US2] Implement line detection on mark: after marking, run findCompletedLines(), update player progress
-- [ ] T044 [US2] Add visual feedback for completed lines: highlight cells, animate B-I-N-G-O letter advancement
+- [x] T034 [P] [US2] Create Cell.svelte in src/components/Cell.svelte: single card cell with marked/unmarked states
+- [x] T035 [P] [US2] Create Card.svelte in src/components/Card.svelte: 5x5 grid using CSS Grid, displays player's card
+- [x] T036 [P] [US2] Create NumberPad.svelte in src/components/NumberPad.svelte: 1-25 number buttons, disable called numbers
+- [x] T037 [P] [US2] Create CalledNumbers.svelte in src/components/CalledNumbers.svelte: chronological list of called numbers
+- [x] T038 [US2] Create Game.svelte in src/components/Game.svelte: main game screen layout with card, numberpad, players
+- [x] T039 [US2] Implement call-number handler in host.ts: validate turn, validate number not called, broadcast number-called
+- [x] T040 [US2] Implement number-called handler in sync.ts: update local calledNumbers, mark number on local card
+- [x] T041 [US2] Implement markNumber() integration: call markNumber() on player's BingoCard when number-called received
+- [x] T042 [US2] Implement turn advancement: advanceTurn() after each number-called, update currentTurnIndex
+- [x] T043 [US2] Implement line detection on mark: after marking, run findCompletedLines(), update player progress
+- [x] T044 [US2] Add visual feedback for completed lines: highlight cells, animate B-I-N-G-O letter advancement
 
 **Checkpoint**: User Story 2 complete - core gameplay loop works
 
@@ -127,12 +127,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T045 [P] [US3] Create Progress.svelte in src/components/Progress.svelte: B-I-N-G-O letter tracker (0-5 lines)
-- [ ] T046 [US3] Implement declare-winner handler in host.ts: validate completed lines against calledNumbers, broadcast game-over
-- [ ] T047 [US3] Implement automatic win detection: after each mark, check if completedLines.length >= 5, send declare-winner
-- [ ] T048 [US3] Implement game-over handler in sync.ts: update session status to 'completed', show winner announcement
-- [ ] T049 [US3] Create GameOver.svelte in src/components/GameOver.svelte: winner announcement, player's own final progress
-- [ ] T050 [US3] Implement "Play Again" flow: create new session with same players invited (optional re-join)
+- [x] T045 [P] [US3] Create Progress.svelte in src/components/Progress.svelte: B-I-N-G-O letter tracker (0-5 lines)
+- [x] T046 [US3] Implement declare-winner handler in host.ts: validate completed lines against calledNumbers, broadcast game-over
+- [x] T047 [US3] Implement automatic win detection: after each mark, check if completedLines.length >= 5, send declare-winner
+- [x] T048 [US3] Implement game-over handler in sync.ts: update session status to 'completed', show winner announcement
+- [x] T049 [US3] Create GameOver.svelte in src/components/GameOver.svelte: winner announcement, player's own final progress
+- [x] T050 [US3] Implement "Play Again" flow: create new session with same players invited (optional re-join)
 
 **Checkpoint**: User Story 3 complete - full game playable from start to finish (MVP COMPLETE!)
 
@@ -146,11 +146,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T051 [US4] Ensure Card.svelte only displays current player's card (already local, verify no leakage)
-- [ ] T052 [US4] Ensure Progress.svelte only shows current player's progress (completedLines from local store)
-- [ ] T053 [US4] Implement turn indicator in Game.svelte: "Your Turn" / "[Player Name]'s Turn" based on currentTurnIndex
-- [ ] T054 [US4] Update PlayerList.svelte for in-game: show names and connection status only (no progress/cards)
-- [ ] T055 [US4] Add accessibility: ARIA labels for turn indicator, progress tracker, card cells
+- [x] T051 [US4] Ensure Card.svelte only displays current player's card (already local, verify no leakage)
+- [x] T052 [US4] Ensure Progress.svelte only shows current player's progress (completedLines from local store)
+- [x] T053 [US4] Implement turn indicator in Game.svelte: "Your Turn" / "[Player Name]'s Turn" based on currentTurnIndex
+- [x] T054 [US4] Update PlayerList.svelte for in-game: show names and connection status only (no progress/cards)
+- [x] T055 [US4] Add accessibility: ARIA labels for turn indicator, progress tracker, card cells
 
 **Checkpoint**: User Story 4 complete - privacy requirements verified
 
@@ -164,13 +164,15 @@
 
 ### Implementation for User Story 5
 
-- [ ] T056 [US5] Implement ping/pong heartbeat in src/lib/network/room.ts: detect disconnections
-- [ ] T057 [US5] Implement connection status updates: track 'connected', 'reconnecting', 'disconnected' per player
-- [ ] T058 [US5] Implement 30-second turn timeout: if disconnected player's turn, wait 30s then auto-skip
-- [ ] T059 [US5] Implement auto-reconnect: on reconnect, send player-join, host responds with sync-state
-- [ ] T060 [US5] Implement session recovery from localStorage: on page reload, attempt rejoin if session active
-- [ ] T061 [US5] Implement host failover: if host disconnects, promote next player in array to host
-- [ ] T062 [US5] Show "reconnecting" indicator in PlayerList.svelte for disconnected players
+- [x] T056 [US5] Implement ping/pong heartbeat in src/lib/network/room.ts: detect disconnections
+- [x] T057 [US5] Implement connection status updates: track 'connected', 'reconnecting', 'disconnected' per player
+- [x] T058 [US5] Implement 30-second turn timeout: if disconnected player's turn, wait 30s then auto-skip
+- [x] T059 [US5] Implement auto-reconnect: on reconnect, send player-join, host responds with sync-state
+- [x] T060 [US5] Implement session recovery from localStorage: on page reload, attempt rejoin if session active
+- [x] T061 [US5] Implement host failover: if host disconnects, promote next player in array to host
+- [x] T062 [US5] Show "reconnecting" indicator in PlayerList.svelte for disconnected players
+
+**Checkpoint**: User Story 5 complete - network resilience implemented
 
 **Checkpoint**: User Story 5 complete - network resilience implemented
 
@@ -180,14 +182,14 @@
 
 **Purpose**: Improvements affecting multiple stories
 
-- [ ] T063 [P] Add global styles in src/app.css: CSS custom properties, responsive breakpoints
-- [ ] T064 [P] Create favicon.svg in static/favicon.svg
-- [ ] T065 [P] Create manifest.json in static/manifest.json for PWA support (optional)
-- [ ] T066 Implement 60fps animations for card marking, line completion, progress advancement
-- [ ] T067 Ensure touch targets ≥48px on all interactive elements (per constitution)
-- [ ] T068 Add error boundaries and user-friendly error messages throughout
-- [ ] T069 Verify bundle size < 100KB gzipped (run `pnpm build` and check)
-- [ ] T070 Run quickstart.md validation: verify all setup steps work for new developer
+- [x] T063 [P] Add global styles in src/app.css: CSS custom properties, responsive breakpoints
+- [x] T064 [P] Create favicon.svg in static/favicon.svg
+- [x] T065 [P] Create manifest.json in static/manifest.json for PWA support (optional)
+- [x] T066 Implement 60fps animations for card marking, line completion, progress advancement
+- [x] T067 Ensure touch targets ≥48px on all interactive elements (per constitution)
+- [x] T068 Add error boundaries and user-friendly error messages throughout
+- [x] T069 Verify bundle size < 100KB gzipped (run `pnpm build` and check)
+- [x] T070 Run quickstart.md validation: verify all setup steps work for new developer
 
 ---
 
