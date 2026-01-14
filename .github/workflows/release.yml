@@ -88,9 +88,10 @@ jobs:
             -f allow_force_pushes=false \
             -f allow_deletions=false
           
-          # Verify protection was applied
-          if gh api repos/${{ github.repository }}/branches/release/protection 2>/dev/null | grep -q '"lock_branch"'; then
-            echo "Branch protection verified."
+          # Verify protection was applied with lock_branch=true
+          PROTECTION=$(gh api repos/${{ github.repository }}/branches/release/protection 2>/dev/null)
+          if echo "$PROTECTION" | jq -e '.lock_branch == true' > /dev/null 2>&1; then
+            echo "Branch protection verified (lock_branch=true)."
           else
             echo "::error::Failed to verify branch protection. The release branch may be unprotected!"
             exit 1
