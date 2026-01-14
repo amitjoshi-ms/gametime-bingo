@@ -51,7 +51,10 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - This allows Copilot to run in parallel with CI
    - Note: Copilot may appear as a check or as a PR review depending on repo configuration
 2. **CHECK** CI status (all checks except Copilot):
-   - If any check `pending`/`in_progress`: Wait 30 seconds, re-check (use exponential backoff for long-running checks)
+   - If any check `pending`/`in_progress`:
+     - Poll every 30 seconds for up to 10 minutes
+     - After 10 minutes of `pending`/`in_progress`, use exponential backoff: 1min → 2min → 4min (max 5min between polls)
+     - Stop polling after 60 minutes total and report to user
    - If any check `failure`: Execute **Fix CI Failures** workflow → **GOTO step 1**
    - If all checks `success`: Continue to step 3
 3. **AWAIT** Copilot Code Review:
@@ -123,8 +126,10 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 **Execute these steps for each failing check:**
 
-1. **GET** PR status to identify failing checks
+1. **GET** PR status using `get_pull_request_status` to identify failing checks
+   - Extract the workflow run ID from the failing check's details URL or context
 2. **RUN** `gh run view <run-id> --log-failed` to get failure logs
+   - Replace `<run-id>` with the numeric ID extracted in step 1
 3. **ANALYZE** the error output:
    - Identify the failing file(s) and line(s)
    - Determine root cause (lint, test, build, type error)
@@ -134,11 +139,23 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - For test failures: Fix the test or the code being tested
    - For type errors: Add types, fix signatures
    - For build errors: Fix imports, dependencies
-6. **RUN** the check locally to verify: `npm run lint` / `npm run test` / `npm run build`
-7. **COMMIT** fixes: `git add . && git commit -m "fix: address CI failures"`
-   - Note: If push fails due to conflicts, pull and rebase first
-8. **PUSH** changes: `git push`
-9. **RETURN** to Monitor workflow to re-check CI
+6. **RUN** the relevant check(s) locally to verify fix works:
+   - `npm run lint` for lint errors
+   - `npm run check` for TypeScript type errors
+   - `npm run test` for unit test failures
+   - `npm run build` for build errors
+   - `npx playwright test --project=chromium` for E2E failures (requires build first)
+7. **IF** local check(s) **fail**:
+   - Analyze the new error output
+   - Go back to step 5 to refine the fix
+   - **DO NOT** commit or push until local check(s) pass
+8. **IF** local check(s) **pass**:
+   - **STAGE** only the files you modified: `git add <file1> <file2> ...`
+   - Alternatively, review staged changes with `git status` before committing
+   - **COMMIT** fixes: `git commit -m "fix: address CI failures"`
+9. **PUSH** changes: `git push`
+   - If push fails due to conflicts: `git pull --rebase && git push`
+10. **RETURN** to Monitor workflow to re-check CI
 
 ## Workflow: Address Review Comments
 
@@ -151,10 +168,13 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    b. **ANALYZE** what the reviewer is asking for
    c. **EDIT** the file to address the feedback
    d. **REPLY** to the comment explaining the change made
-4. **COMMIT** all changes: `git add . && git commit -m "fix: address review comments"`
-5. **PUSH** changes: `git push`
-6. **RE-REQUEST** review from Copilot (automatic on push) or human reviewers who requested changes
-7. **RETURN** to Monitor workflow
+4. **STAGE** only the files you modified: `git add <file1> <file2> ...`
+   - Alternatively, use `git add -p` for interactive staging
+   - Verify with `git status` that only intended files are staged
+5. **COMMIT** changes: `git commit -m "fix: address review comments"`
+6. **PUSH** changes: `git push`
+7. **RE-REQUEST** review from Copilot (automatic on push) or human reviewers who requested changes
+8. **RETURN** to Monitor workflow
 
 ## Workflow: Check My PRs
 
@@ -185,10 +205,14 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 | Action | Command |
 |--------|---------|
-| Check CI locally | `npm run lint && npm run test && npm run build` |
+| Check CI locally (full) | `npm run lint && npm run check && npm run test && npm run build` |
+| Lint only | `npm run lint` |
+| Type check only | `npm run check` |
+| Unit tests only | `npm run test` |
+| E2E tests | `npm run build && npx playwright test --project=chromium` |
 | View failed run | `gh run view <id> --log-failed` |
 | Re-run checks | `gh run rerun <id> --failed` |
-| Push changes | `git add . && git commit -m "msg" && git push` |
+| Push changes | `git add <files> && git commit -m "msg" && git push` |
 
 ## Decision Tree
 
