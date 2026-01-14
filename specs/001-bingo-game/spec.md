@@ -96,7 +96,7 @@ When a player temporarily loses connection, the game continues and they can rejo
 
 - What happens if a player leaves permanently mid-game? Their turn is skipped automatically; remaining players continue.
 - What happens if only 1 player remains? That player wins by default.
-- What happens when two players complete their 5th line on the same turn? The player whose card was processed first wins (deterministic order).
+- What happens when two players complete their 5th line on the same turn? The player whose card appears earlier in the `players` array (reflecting join order) wins; this defines the deterministic processing order.
 - What happens if the game host disconnects? Another connected player becomes the host automatically.
 
 ## Requirements *(mandatory)*

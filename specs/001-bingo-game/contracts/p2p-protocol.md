@@ -19,10 +19,12 @@ const [sendX, onX] = room.makeAction<PayloadType>('actionName')
 
 ### 1. `sync-state` (Host → All)
 
-Full game state broadcast from host to all peers. Sent:
-- When a new player joins
-- After any state change (number called, player leaves, etc.)
-- On reconnection
+Full game state broadcast from host. Used sparingly for full state synchronization:
+- When a new player joins (initial state snapshot)
+- On player reconnection after disconnect
+- When host detects potential desync
+
+**Note**: For normal gameplay events (number called, player leaves), use delta messages (`number-called`, `player-left`) instead to minimize network overhead.
 
 ```typescript
 interface SyncStatePayload {
@@ -154,13 +156,14 @@ interface DeclareWinnerPayload {
   type: 'declare-winner'
   playerId: string
   completedLineCount: number  // Should be >= 5
+  completedLines: LineDefinition[]  // Line coordinates for verification
 }
 ```
 
 **Sender**: Winning player  
 **Receiver**: Host  
-**Validation**: Host cannot verify card (private), trusts declaration  
-**Response**: Host broadcasts `game-over`
+**Validation**: Host verifies that all claimed lines contain only numbers from `calledNumbers`. Host cannot verify card ownership but can detect impossible claims.  
+**Response**: Host broadcasts `game-over` if valid, `error` if claim is impossible
 
 ---
 

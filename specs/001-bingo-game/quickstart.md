@@ -48,7 +48,6 @@ gametime-bingo/
 │   │   ├── Game.svelte     # Main game screen
 │   │   ├── NumberPad.svelte # Number calling interface
 │   │   └── Progress.svelte # B-I-N-G-O progress tracker
-│   ├── routes/             # SvelteKit routes (if using)
 │   ├── App.svelte          # Root component
 │   └── main.ts             # Entry point
 ├── tests/
