@@ -1,0 +1,31 @@
+name: Request Copilot Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  copilot-review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request Copilot Code Review
+        uses: actions/github-script@v7
+        with:
+          # Note: Copilot code review is enabled at the repository level via GitHub settings.
+          # This workflow triggers automatic review requests when PRs are opened.
+          # The 'copilot-pull-request-reviewer' is a GitHub bot account managed by GitHub.
+          script: |
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                reviewers: ['copilot-pull-request-reviewer']
+              });
+              console.log(`Requested Copilot review for PR #${context.payload.pull_request.number}`);
+            } catch (error) {
+              // Copilot may already be auto-assigned or not available - log and continue
+              console.log(`Copilot review request note: ${error.message}`);
+            }
