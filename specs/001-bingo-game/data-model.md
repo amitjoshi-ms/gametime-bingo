@@ -76,7 +76,7 @@ A player's 5x5 BINGO grid. **Never transmitted over network** (privacy).
 |-------|------|-------------|------------|
 | `grid` | `number[][]` | 5x5 matrix of numbers | Each 1-25, all unique |
 | `marked` | `boolean[][]` | 5x5 matrix of marked states | Corresponds to grid positions |
-| `completedLines` | `LineDefinition[]` | List of completed line indices | Max 12 possible lines |
+| `completedLines` | `LineDefinition[]` | List of completed line definitions | Max 12 possible lines |
 
 **Derived Properties** (computed, not stored):
 - `progress`: Number of completed lines (0-5 shown as B-I-N-G-O)

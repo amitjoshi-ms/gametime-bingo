@@ -79,9 +79,12 @@ const [sendMessage, onMessage] = room.makeAction('message')
 
 **Implementation**:
 ```typescript
-// Generate 6-character room code (e.g., "ABC123")
-const generateRoomCode = () => 
-  Math.random().toString(36).substring(2, 8).toUpperCase()
+// Generate 6-character room code using Web Crypto API for security
+const generateRoomCode = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const randomValues = crypto.getRandomValues(new Uint8Array(6))
+  return Array.from(randomValues, v => chars[v % chars.length]).join('')
+}
 
 // Host creates room
 const roomCode = generateRoomCode()
