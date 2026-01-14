@@ -22,7 +22,7 @@ The release workflow automates deploying code from `main` to production:
 ┌─────────────────────────────────────────────────────────────────┐
 │  1. Unlock release branch                                       │
 │     - Removes branch protection via GitHub API                  │
-│     - Checks if protection exists first                         │
+│     - Checks HTTP status (404 = skip, 200 = delete, else fail)  │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -40,13 +40,15 @@ The release workflow automates deploying code from `main` to production:
 ┌─────────────────────────────────────────────────────────────────┐
 │  4. Re-lock release branch                                      │
 │     - Applies branch protection via GitHub API                  │
-│     - Verifies protection was applied successfully              │
+│     - Verifies lock_branch=true after 2s delay                  │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Cloudflare Pages detects push to release branch                │
 │  - Builds and deploys automatically                             │
 └─────────────────────────────────────────────────────────────────┘
+
+⚠️  ON FAILURE: Cleanup step automatically re-locks release branch
 ```
 
 **Why fast-forward only?** Ensures `release` is always an exact subset of `main` — no merge commits, no divergence, full traceability.
@@ -59,21 +61,24 @@ The release workflow automates deploying code from `main` to production:
 
 ## Release Process
 
-### Option 1: GitHub CLI (Recommended)
+### Option 1: GitHub CLI + Web UI (Recommended)
 
 ```powershell
 # 1. Trigger the release workflow
 gh workflow run release.yml -f confirm=release
 
-# 2. Wait for environment approval (if production environment is configured)
-gh run list --workflow=release.yml --limit 1
+# 2. Get the run ID
+$runId = (gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+Write-Host "Run ID: $runId"
 
-# 3. Approve the pending deployment
-gh run review <run-id> --approve
+# 3. Open the run in browser to approve (environment approvals require web UI)
+gh run view $runId --web
 
-# 4. Watch the run complete
-gh run watch <run-id>
+# 4. After approving in browser, watch the run complete
+gh run watch $runId
 ```
+
+> **Note:** Environment deployment approvals must be done via the GitHub web UI.
 
 ### Option 2: GitHub Web UI
 
@@ -106,8 +111,8 @@ $year = Get-Date -Format "yy"
 $monthDay = (Get-Date).Month.ToString() + (Get-Date -Format "dd")
 $datePrefix = "$year.$monthDay"
 
-# Find next revision number (sort as strings since mdd.rev format)
-$existingTags = git tag -l "$datePrefix.*" | Sort-Object | Select-Object -Last 1
+# Find next revision number (sort by numeric revision to handle 10+ releases/day)
+$existingTags = git tag -l "$datePrefix.*" | Sort-Object { [int]($_ -split '\.')[-1] } | Select-Object -Last 1
 if ($existingTags) {
     $lastRev = [int]($existingTags -replace "$datePrefix\.", "")
     $rev = $lastRev + 1

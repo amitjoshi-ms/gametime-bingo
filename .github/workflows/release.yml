@@ -28,13 +28,17 @@ jobs:
 
       - name: Unlock release branch
         run: |
-          # Check if branch protection exists before attempting to delete
-          if gh api repos/${{ github.repository }}/branches/release/protection 2>/dev/null; then
+          # Check if branch protection exists (404 = no protection, other errors should fail)
+          HTTP_CODE=$(gh api repos/${{ github.repository }}/branches/release/protection -i 2>&1 | head -1 | awk '{print $2}')
+          if [ "$HTTP_CODE" = "200" ]; then
             echo "Removing branch protection..."
             gh api repos/${{ github.repository }}/branches/release/protection -X DELETE
             echo "Branch protection removed."
-          else
+          elif [ "$HTTP_CODE" = "404" ]; then
             echo "No branch protection found, skipping unlock."
+          else
+            echo "::error::Failed to check branch protection (HTTP $HTTP_CODE)"
+            exit 1
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,7 +92,8 @@ jobs:
             -f allow_force_pushes=false \
             -f allow_deletions=false
           
-          # Verify protection was applied with lock_branch=true
+          # Small delay for API consistency, then verify protection
+          sleep 2
           PROTECTION=$(gh api repos/${{ github.repository }}/branches/release/protection 2>/dev/null)
           if echo "$PROTECTION" | jq -e '.lock_branch == true' > /dev/null 2>&1; then
             echo "Branch protection verified (lock_branch=true)."
@@ -106,3 +111,20 @@ jobs:
           echo "**Tag:** \`${{ env.TAG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The \`release\` branch has been fast-forwarded to \`main\` and locked." >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup - Re-lock branch on failure
+        if: failure()
+        run: |
+          echo "::warning::Workflow failed, attempting to re-lock release branch..."
+          gh api repos/${{ github.repository }}/branches/release/protection \
+            -X PUT \
+            -H "Accept: application/vnd.github+json" \
+            -f lock_branch=true \
+            -f required_status_checks=null \
+            -f enforce_admins=true \
+            -f required_pull_request_reviews=null \
+            -f restrictions=null \
+            -f allow_force_pushes=false \
+            -f allow_deletions=false || echo "::error::Failed to re-lock branch!"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
