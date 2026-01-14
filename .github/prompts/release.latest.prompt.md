@@ -42,8 +42,8 @@ $year = Get-Date -Format "yy"
 $monthDay = (Get-Date).Month.ToString() + (Get-Date -Format "dd")
 $datePrefix = "$year.$monthDay"
 
-# Find next revision number
-$existingTags = git tag -l "$datePrefix.*" | Sort-Object -Property { [version]$_ } | Select-Object -Last 1
+# Find next revision number (sort as strings since mdd.rev format)
+$existingTags = git tag -l "$datePrefix.*" | Sort-Object | Select-Object -Last 1
 if ($existingTags) {
     $lastRev = [int]($existingTags -replace "$datePrefix\.", "")
     $rev = $lastRev + 1
@@ -64,12 +64,15 @@ gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=tr
 Tags follow the format `{yy}.{mdd}.{rev}`:
 - `yy` - Two-digit year
 - `m` - Month (1-12, no leading zero)
-- `dd` - Day (01-31)
+- `dd` - Day (01-31, always zero-padded)
 - `rev` - Revision number starting at 0
 
+The format is unambiguous because the day is always 2 digits. Parse from right: last 2 chars = day, remaining = month.
+
 Examples:
-- `26.114.0` - January 14, 2026, first release
+- `26.114.0` - January 14, 2026 (m=1, dd=14), first release
 - `26.114.1` - January 14, 2026, second release
+- `26.1104.0` - November 4, 2026 (m=11, dd=04), first release
 - `26.1231.0` - December 31, 2026, first release
 
 ## Cloudflare Pages

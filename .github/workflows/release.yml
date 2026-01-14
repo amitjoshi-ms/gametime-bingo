@@ -12,6 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     if: github.event.inputs.confirm == 'release'
+    environment: production
     
     steps:
       - name: Checkout repository
@@ -27,15 +28,25 @@ jobs:
 
       - name: Unlock release branch
         run: |
-          gh api repos/${{ github.repository }}/branches/release/protection \
-            -X DELETE || true
+          # Check if branch protection exists before attempting to delete
+          if gh api repos/${{ github.repository }}/branches/release/protection 2>/dev/null; then
+            echo "Removing branch protection..."
+            gh api repos/${{ github.repository }}/branches/release/protection -X DELETE
+            echo "Branch protection removed."
+          else
+            echo "No branch protection found, skipping unlock."
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fast-forward release to main
         run: |
           git checkout release
-          git merge --ff-only origin/main
+          if ! git merge --ff-only origin/main; then
+            echo "::error::Fast-forward merge failed. The release branch may have diverged from main."
+            echo "::error::To fix: git checkout release && git reset --hard origin/main (WARNING: this discards release-only commits)"
+            exit 1
+          fi
           git push origin release
 
       - name: Create release tag
@@ -65,6 +76,7 @@ jobs:
 
       - name: Lock release branch
         run: |
+          echo "Applying branch protection..."
           gh api repos/${{ github.repository }}/branches/release/protection \
             -X PUT \
             -H "Accept: application/vnd.github+json" \
@@ -75,6 +87,14 @@ jobs:
             -f restrictions=null \
             -f allow_force_pushes=false \
             -f allow_deletions=false
+          
+          # Verify protection was applied
+          if gh api repos/${{ github.repository }}/branches/release/protection 2>/dev/null | grep -q '"lock_branch"'; then
+            echo "Branch protection verified."
+          else
+            echo "::error::Failed to verify branch protection. The release branch may be unprotected!"
+            exit 1
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
