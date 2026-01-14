@@ -1,6 +1,7 @@
 ---
 description: 'Action-driven PR workflow: create, monitor CI, fix failures, address reviews, push changes'
 tools:
+  # GitHub PR operations
   - github
   - create_pull_request
   - update_pull_request
@@ -14,10 +15,18 @@ tools:
   - merge_pull_request
   - get_me
   - githubRepo
+  # Terminal for running commands (git, npm, gh)
   - runCommands/runInTerminal
   - runCommands/getTerminalOutput
+  # File operations (needed for CI fixes and review comments)
   - editFiles/editFile
+  - editFiles/createFile
+  - changes/getChangedFiles
   - codebase
+  - codebase/search
+  - findFiles/file_search
+  - findFiles/grep_search
+  - problems/getErrors
 ---
 
 # GitHub Pull Request Workflow
