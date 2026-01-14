@@ -12,6 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     if: github.event.inputs.confirm == 'release'
+    environment: production
     
     steps:
       - name: Checkout repository
@@ -27,15 +28,33 @@ jobs:
 
       - name: Unlock release branch
         run: |
-          gh api repos/${{ github.repository }}/branches/release/protection \
-            -X DELETE || true
+          # Check if branch protection exists using exit code first
+          set +e
+          RESPONSE=$(gh api repos/${{ github.repository }}/branches/release/protection 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "Removing branch protection..."
+            gh api repos/${{ github.repository }}/branches/release/protection -X DELETE
+            echo "Branch protection removed."
+          elif echo "$RESPONSE" | grep -q "404"; then
+            echo "No branch protection found, skipping unlock."
+          else
+            echo "::error::Failed to check branch protection: $RESPONSE"
+            exit 1
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fast-forward release to main
         run: |
           git checkout release
-          git merge --ff-only origin/main
+          if ! git merge --ff-only origin/main; then
+            echo "::error::Fast-forward merge failed. The release branch may have diverged from main."
+            echo "::error::To fix: git checkout release && git reset --hard origin/main (WARNING: this discards release-only commits)"
+            exit 1
+          fi
           git push origin release
 
       - name: Create release tag
@@ -65,6 +84,7 @@ jobs:
 
       - name: Lock release branch
         run: |
+          echo "Applying branch protection..."
           gh api repos/${{ github.repository }}/branches/release/protection \
             -X PUT \
             -H "Accept: application/vnd.github+json" \
@@ -75,6 +95,26 @@ jobs:
             -f restrictions=null \
             -f allow_force_pushes=false \
             -f allow_deletions=false
+          
+          # Small delay for API consistency, then verify protection
+          sleep 2
+          set +e
+          PROTECTION=$(gh api repos/${{ github.repository }}/branches/release/protection 2>&1)
+          API_EXIT=$?
+          set -e
+          
+          if [ $API_EXIT -ne 0 ]; then
+            echo "::error::Failed to fetch branch protection: $PROTECTION"
+            exit 1
+          fi
+          
+          if echo "$PROTECTION" | jq -e '.lock_branch == true' > /dev/null 2>&1; then
+            echo "Branch protection verified (lock_branch=true)."
+          else
+            echo "::error::Branch protection applied but lock_branch is not true!"
+            echo "Response: $PROTECTION"
+            exit 1
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -85,3 +125,25 @@ jobs:
           echo "**Tag:** \`${{ env.TAG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The \`release\` branch has been fast-forwarded to \`main\` and locked." >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup - Re-lock branch on failure
+        if: failure()
+        run: |
+          echo "::warning::Workflow failed, attempting to re-lock release branch..."
+          # Note: We use || true pattern here intentionally. If the main workflow failed,
+          # we want to attempt cleanup but not mask the original failure.
+          # The warning above and any API error will still be visible in logs.
+          gh api repos/${{ github.repository }}/branches/release/protection \
+            -X PUT \
+            -H "Accept: application/vnd.github+json" \
+            -f lock_branch=true \
+            -f required_status_checks=null \
+            -f enforce_admins=true \
+            -f required_pull_request_reviews=null \
+            -f restrictions=null \
+            -f allow_force_pushes=false \
+            -f allow_deletions=false \
+            && echo "Branch re-locked successfully." \
+            || echo "::error::CRITICAL: Failed to re-lock branch! Manual intervention required."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
