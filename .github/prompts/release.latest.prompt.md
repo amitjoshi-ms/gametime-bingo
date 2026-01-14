@@ -12,12 +12,29 @@ This prompt guides the release of changes from `main` to the `release` branch fo
 
 ## Release Process
 
-### Option 1: GitHub Actions Workflow (Recommended)
+### Option 1: GitHub CLI (Recommended)
+
+```powershell
+# 1. Trigger the release workflow
+gh workflow run release.yml -f confirm=release
+
+# 2. Wait for environment approval (if production environment is configured)
+gh run list --workflow=release.yml --limit 1
+
+# 3. Approve the pending deployment
+gh run review <run-id> --approve
+
+# 4. Watch the run complete
+gh run watch <run-id>
+```
+
+### Option 2: GitHub Web UI
 
 1. Go to **Actions** → **Release to Production**
 2. Click **Run workflow**
 3. Type `release` in the confirmation field
 4. Click **Run workflow**
+5. If environment protection is enabled, approve the pending deployment
 
 The workflow will:
 - Unlock the `release` branch
@@ -25,7 +42,7 @@ The workflow will:
 - Create a tag in format `yy.mdd.rev`
 - Re-lock the `release` branch
 
-### Option 2: Manual Release (PowerShell)
+### Option 3: Manual Release (PowerShell)
 
 ```powershell
 # 1. Unlock release branch
