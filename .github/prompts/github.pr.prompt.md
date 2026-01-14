@@ -49,12 +49,13 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - **GET** PR status using `get_pull_request_status`
    - If no "Copilot Code Review" check found: **REQUEST** with `request_copilot_review`
    - This allows Copilot to run in parallel with CI
+   - Note: Copilot may appear as a check or as a PR review depending on repo configuration
 2. **CHECK** CI status (all checks except Copilot):
-   - If any check `pending`/`in_progress`: Wait 30 seconds, re-check
+   - If any check `pending`/`in_progress`: Wait 30 seconds, re-check (use exponential backoff for long-running checks)
    - If any check `failure`: Execute **Fix CI Failures** workflow → **GOTO step 1**
    - If all checks `success`: Continue to step 3
-3. **CHECK** Copilot Code Review check status:
-   - Find check named "Copilot Code Review" in status response
+3. **CHECK** Copilot Code Review status:
+   - Find check named "Copilot Code Review" in status response, or check PR reviews for `copilot-pull-request-reviewer`
    - If `status: queued` or `status: in_progress`: Wait 30 seconds, re-check
    - If `status: completed`: Continue to step 4
 4. **CHECK** Copilot review result:
@@ -80,7 +81,8 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - For type errors: Add types, fix signatures
    - For build errors: Fix imports, dependencies
 6. **RUN** the check locally to verify: `npm run lint` / `npm run test` / `npm run build`
-7. **COMMIT** fixes: `git add -A && git commit -m "fix: address CI failures"`
+7. **COMMIT** fixes: `git add . && git commit -m "fix: address CI failures"`
+   - Note: If push fails due to conflicts, pull and rebase first
 8. **PUSH** changes: `git push`
 9. **RETURN** to Monitor workflow to re-check CI
 
@@ -95,9 +97,9 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    b. **ANALYZE** what the reviewer is asking for
    c. **EDIT** the file to address the feedback
    d. **REPLY** to the comment explaining the change made
-4. **COMMIT** all changes: `git add -A && git commit -m "fix: address review comments"`
+4. **COMMIT** all changes: `git add . && git commit -m "fix: address review comments"`
 5. **PUSH** changes: `git push`
-6. **RE-REQUEST** review if reviewer requested changes
+6. **RE-REQUEST** review from Copilot (automatic on push) or human reviewers who requested changes
 7. **RETURN** to Monitor workflow
 
 ## Workflow: Check My PRs
@@ -132,14 +134,14 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 | Check CI locally | `npm run lint && npm run test && npm run build` |
 | View failed run | `gh run view <id> --log-failed` |
 | Re-run checks | `gh run rerun <id> --failed` |
-| Push changes | `git add -A && git commit -m "msg" && git push` |
+| Push changes | `git add . && git commit -m "msg" && git push` |
 
 ## Decision Tree
 
 ```
 User Request
 ├── "create PR" → Create PR workflow
-├── "check my PRs" → Check My PRs workflow  
+├── "check my PRs" → Check My PRs workflow
 ├── "fix PR #N" → Monitor PR Until Ready workflow
 ├── "address comments on #N" → Address Review Comments workflow
 ├── "fix CI on #N" → Fix CI Failures workflow
