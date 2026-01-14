@@ -159,7 +159,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - **DO NOT** commit or push until local check(s) pass
 8. **IF** local check(s) **pass**:
    - **STAGE** only the files you modified: `git add <file1> <file2> ...`
-   - Alternatively, review staged changes with `git status` before committing
+   - Alternatively, review staged changes with `git diff --staged` before committing
    - **COMMIT** fixes: `git commit -m "fix: address CI failures"`
 9. **PUSH** changes: `git push`
    - If push fails due to conflicts: `git pull --rebase && git push`
@@ -178,10 +178,10 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    d. **REPLY** to the comment explaining the change made
 4. **STAGE** only the files you modified: `git add <file1> <file2> ...`
    - Alternatively, use `git add -p` for interactive staging
-   - Verify with `git status` that only intended files are staged
+   - Verify with `git diff --staged` that only intended changes are staged
 5. **COMMIT** changes: `git commit -m "fix: address review comments"`
 6. **PUSH** changes: `git push`
-7. **RE-REQUEST** review from Copilot (automatic on push) or human reviewers who requested changes
+7. **RE-REQUEST** review from Copilot (may auto-trigger on push depending on repo settings) and from human reviewers who requested changes
 8. **RETURN** to Monitor workflow
 
 ## Workflow: Check My PRs
@@ -211,7 +211,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 ## Commands Reference
 
-These commands assume dependencies are installed (`npm install` or `npm ci` has been run).
+These commands assume dependencies are installed (run `npm ci` first to install from lockfile).
 
 | Action | Command |
 |--------|---------|
