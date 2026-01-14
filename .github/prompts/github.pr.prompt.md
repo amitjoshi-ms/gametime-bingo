@@ -54,15 +54,11 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - If any check `pending`/`in_progress`: Wait 30 seconds, re-check (use exponential backoff for long-running checks)
    - If any check `failure`: Execute **Fix CI Failures** workflow → **GOTO step 1**
    - If all checks `success`: Continue to step 3
-3. **AWAIT** Copilot Code Review (max 15 minutes):
-   - **GET** PR reviews using `get_pull_request_reviews`
-   - **CHECK** for review from `copilot-pull-request-reviewer`:
-     - If found with comments: Continue to step 4
-     - If found with no comments: PR is clean, continue to step 5
-     - If not found: Execute **Request Copilot Review** sub-workflow
-   - **TIMEOUT** after 15 minutes of waiting:
-     - Execute **Local Code Review** workflow instead
-     - Continue to step 5 if local review passes
+3. **AWAIT** Copilot Code Review:
+   - Execute **Await Copilot Review** sub-workflow (max 15 minutes)
+   - **IF** review received with comments: Continue to step 4
+   - **IF** review received with no comments: PR is clean, continue to step 5
+   - **IF** timeout (no review after 15 mins): Execute **Local Code Review** workflow, continue to step 5
 4. **ADDRESS** Copilot review comments:
    - **GET** review comments using `get_pull_request_comments`
    - Execute **Address Review Comments** workflow → **GOTO step 1**
@@ -79,13 +75,31 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    c. **VERIFY** request succeeded:
       - **GET** PR details to check requested reviewers
       - **CHECK** if `copilot-pull-request-reviewer` is in reviewers list
-      - If yes: Request successful, **RETURN** to await review (step 3 of Monitor)
+      - If yes: Request successful, **RETURN** success
       - If no: Log "Copilot request attempt {attempt} failed"
    d. **INCREMENT** attempt
    e. **WAIT** 30 seconds before retry
 3. **IF** all attempts failed:
    - Log "Failed to request Copilot review after 3 attempts"
-   - **RETURN** to Monitor workflow (will timeout and fall back to local review)
+   - **RETURN** failure
+
+### Sub-workflow: Await Copilot Review
+
+**Poll for Copilot review (max 15 minutes, 1-minute intervals):**
+
+1. **SET** start_time = now, timeout = 15 minutes
+2. **LOOP** while (now - start_time) < timeout:
+   a. **GET** PR reviews using `get_pull_request_reviews`
+   b. **CHECK** for review from `copilot-pull-request-reviewer`:
+      - If found with comments: **RETURN** {status: "comments", review: review}
+      - If found with no comments: **RETURN** {status: "clean"}
+      - If not found: Continue to step c
+   c. **CHECK** if Copilot is in requested reviewers:
+      - If not requested: Execute **Request Copilot Review** sub-workflow
+        - If request failed: **RETURN** {status: "timeout"}
+      - If requested: Log "Waiting for Copilot review..."
+   d. **WAIT** 60 seconds (1-minute polling interval)
+3. **RETURN** {status: "timeout"} (15 minutes elapsed without review)
 
 ## Workflow: Local Code Review
 
