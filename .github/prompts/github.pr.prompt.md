@@ -43,7 +43,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 ## Workflow: Monitor PR Until Ready
 
-**Execute these steps, polling until complete:**
+**Execute these steps, polling until complete. Track `ci_fix_attempts` and `review_cycles` (both start at 0).**
 
 1. **ENSURE** Copilot review is requested:
    - **GET** PR status using `get_pull_request_status`
@@ -53,9 +53,12 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 2. **CHECK** CI status (all checks except Copilot):
    - If any check `pending`/`in_progress`:
      - Poll every 30 seconds for up to 10 minutes
-     - After 10 minutes of `pending`/`in_progress`, use exponential backoff: 1min → 2min → 4min (max 5min between polls)
+     - After 10 minutes of `pending`/`in_progress`, use exponential backoff: 1min → 2min → 4min → 5min → 5min... (capped)
      - Stop polling after 60 minutes total and report to user
-   - If any check `failure`: Execute **Fix CI Failures** workflow → **GOTO step 1**
+   - If any check `failure`:
+     - Increment `ci_fix_attempts`
+     - If `ci_fix_attempts` > 3: **ASK** user "CI has failed 3+ times. Continue fixing?" If no, stop.
+     - Execute **Fix CI Failures** workflow → **GOTO step 1**
    - If all checks `success`: Continue to step 3
 3. **AWAIT** Copilot Code Review:
    - Execute **Await Copilot Review** sub-workflow (max 15 minutes)
@@ -64,6 +67,8 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - **IF** timeout (no review after 15 mins): Execute **Local Code Review** workflow, continue to step 5
 4. **ADDRESS** Copilot review comments:
    - **GET** review comments using `get_pull_request_comments`
+   - Increment `review_cycles`
+   - If `review_cycles` > 3: **ASK** user "This is review cycle #N. Continue addressing comments?" If no, stop.
    - Execute **Address Review Comments** workflow → **GOTO step 1**
 5. **REPORT** PR is ready to merge (CI passed, code review clean)
 
@@ -90,8 +95,8 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 **Poll for Copilot review (max 15 minutes, 1-minute intervals):**
 
-1. **SET** start_time = now, timeout = 15 minutes
-2. **LOOP** while (now - start_time) < timeout:
+1. **SET** start_time = current_time(), timeout = 15 minutes
+2. **LOOP** while (current_time() - start_time) < timeout:
    a. **GET** PR reviews using `get_pull_request_reviews`
    b. **CHECK** for review from `copilot-pull-request-reviewer`:
       - If found with comments: **RETURN** {status: "comments", review: review}
@@ -127,8 +132,11 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 **Execute these steps for each failing check:**
 
 1. **GET** PR status using `get_pull_request_status` to identify failing checks
-   - Extract the workflow run ID from the failing check's details URL or context
-2. **RUN** `gh run view <run-id> --log-failed` to get failure logs
+   - For GitHub Actions checks, extract the run ID from:
+     - The `workflow_run.id` or `run_id` field in the check payload, OR
+     - The `details_url` like `https://github.com/<org>/<repo>/actions/runs/<run-id>` (extract the numeric ID after `/runs/`)
+   - For external CI providers (no `/actions/runs/` URL), note that `gh run view` won't work; skip to step 3 and analyze from the check's output directly
+2. **RUN** `gh run view <run-id> --log-failed` to get failure logs (for GitHub Actions only)
    - Replace `<run-id>` with the numeric ID extracted in step 1
 3. **ANALYZE** the error output:
    - Identify the failing file(s) and line(s)
@@ -144,7 +152,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - `npm run check` for TypeScript type errors
    - `npm run test` for unit test failures
    - `npm run build` for build errors
-   - `npx playwright test --project=chromium` for E2E failures (requires build first)
+   - `npm run build && npx playwright test --project=chromium` for E2E failures
 7. **IF** local check(s) **fail**:
    - Analyze the new error output
    - Go back to step 5 to refine the fix
@@ -202,6 +210,8 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 4. If yes: Merge using `merge_pull_request`
 
 ## Commands Reference
+
+These commands assume dependencies are installed (`npm install` or `npm ci` has been run).
 
 | Action | Command |
 |--------|---------|
