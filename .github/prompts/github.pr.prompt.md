@@ -11,6 +11,7 @@ tools:
   - get_pull_request_files
   - get_pull_request_comments
   - request_copilot_review
+  - merge_pull_request
   - get_me
   - githubRepo
   - runCommands/runInTerminal
@@ -78,7 +79,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - For test failures: Fix the test or the code being tested
    - For type errors: Add types, fix signatures
    - For build errors: Fix imports, dependencies
-6. **RUN** the check locally to verify: `pnpm lint` / `pnpm test` / `pnpm build`
+6. **RUN** the check locally to verify: `npm run lint` / `npm run test` / `npm run build`
 7. **COMMIT** fixes: `git add -A && git commit -m "fix: address CI failures"`
 8. **PUSH** changes: `git push`
 9. **RETURN** to Monitor workflow to re-check CI
@@ -128,7 +129,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 | Action | Command |
 |--------|---------|
-| Check CI locally | `pnpm lint && pnpm test && pnpm build` |
+| Check CI locally | `npm run lint && npm run test && npm run build` |
 | View failed run | `gh run view <id> --log-failed` |
 | Re-run checks | `gh run rerun <id> --failed` |
 | Push changes | `git add -A && git commit -m "msg" && git push` |
