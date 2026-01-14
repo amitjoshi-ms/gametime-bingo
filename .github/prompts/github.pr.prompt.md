@@ -59,11 +59,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - **CHECK** for review from `copilot-pull-request-reviewer`:
      - If found with comments: Continue to step 4
      - If found with no comments: PR is clean, continue to step 5
-     - If not found: Check if review was requested
-   - **IF** no Copilot review found:
-     - Check PR reviewers to see if Copilot was requested
-     - If not requested: **REQUEST** with `request_copilot_review`, wait 60 seconds, re-check
-     - If requested but no review yet: Wait 60 seconds, re-check
+     - If not found: Execute **Request Copilot Review** sub-workflow
    - **TIMEOUT** after 15 minutes of waiting:
      - Execute **Local Code Review** workflow instead
      - Continue to step 5 if local review passes
@@ -71,6 +67,25 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - **GET** review comments using `get_pull_request_comments`
    - Execute **Address Review Comments** workflow → **GOTO step 1**
 5. **REPORT** PR is ready to merge (CI passed, code review clean)
+
+### Sub-workflow: Request Copilot Review
+
+**Execute when no Copilot review found (max 3 attempts):**
+
+1. **SET** attempt = 1, max_attempts = 3
+2. **WHILE** attempt <= max_attempts:
+   a. **REQUEST** Copilot review using `request_copilot_review`
+   b. **WAIT** 30 seconds
+   c. **VERIFY** request succeeded:
+      - **GET** PR details to check requested reviewers
+      - **CHECK** if `copilot-pull-request-reviewer` is in reviewers list
+      - If yes: Request successful, **RETURN** to await review (step 3 of Monitor)
+      - If no: Log "Copilot request attempt {attempt} failed"
+   d. **INCREMENT** attempt
+   e. **WAIT** 30 seconds before retry
+3. **IF** all attempts failed:
+   - Log "Failed to request Copilot review after 3 attempts"
+   - **RETURN** to Monitor workflow (will timeout and fall back to local review)
 
 ## Workflow: Local Code Review
 
