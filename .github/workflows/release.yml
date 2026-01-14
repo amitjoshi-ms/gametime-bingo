@@ -1,0 +1,87 @@
+name: Release to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "release" to confirm'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'release'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Unlock release branch
+        run: |
+          gh api repos/${{ github.repository }}/branches/release/protection \
+            -X DELETE || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fast-forward release to main
+        run: |
+          git checkout release
+          git merge --ff-only origin/main
+          git push origin release
+
+      - name: Create release tag
+        run: |
+          # Format: yy.mdd.rev (e.g., 26.114.0 = Jan 14, 2026, first release of day)
+          YEAR=$(date +%y)
+          MONTH=$(date +%-m)
+          DAY=$(date +%d)
+          DATE_PREFIX="${YEAR}.${MONTH}${DAY}"
+          
+          # Find existing tags for today and determine revision
+          EXISTING_TAGS=$(git tag -l "${DATE_PREFIX}.*" | sort -V | tail -1)
+          if [ -z "$EXISTING_TAGS" ]; then
+            REV=0
+          else
+            LAST_REV=$(echo "$EXISTING_TAGS" | sed "s/${DATE_PREFIX}\.//")
+            REV=$((LAST_REV + 1))
+          fi
+          
+          NEW_TAG="${DATE_PREFIX}.${REV}"
+          echo "Creating tag: $NEW_TAG"
+          
+          git tag "$NEW_TAG"
+          git push origin "$NEW_TAG"
+          
+          echo "TAG_NAME=$NEW_TAG" >> $GITHUB_ENV
+
+      - name: Lock release branch
+        run: |
+          gh api repos/${{ github.repository }}/branches/release/protection \
+            -X PUT \
+            -H "Accept: application/vnd.github+json" \
+            -f lock_branch=true \
+            -f required_status_checks=null \
+            -f enforce_admins=true \
+            -f required_pull_request_reviews=null \
+            -f restrictions=null \
+            -f allow_force_pushes=false \
+            -f allow_deletions=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Release Complete! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`${{ env.TAG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The \`release\` branch has been fast-forwarded to \`main\` and locked." >> $GITHUB_STEP_SUMMARY
