@@ -54,16 +54,41 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - If any check `pending`/`in_progress`: Wait 30 seconds, re-check (use exponential backoff for long-running checks)
    - If any check `failure`: Execute **Fix CI Failures** workflow → **GOTO step 1**
    - If all checks `success`: Continue to step 3
-3. **CHECK** Copilot Code Review status:
-   - Find check named "Copilot Code Review" in status response, or check PR reviews for `copilot-pull-request-reviewer`
-   - If `status: queued` or `status: in_progress`: Wait 30 seconds, re-check
-   - If `status: completed`: Continue to step 4
-4. **CHECK** Copilot review result:
-   - If `conclusion: success` (no comments): PR is clean, continue to step 5
-   - If `conclusion: failure` or `conclusion: neutral` with comments:
-     - **GET** review comments using `get_pull_request_comments`
-     - Execute **Address Review Comments** workflow → **GOTO step 1**
-5. **REPORT** PR is ready to merge (CI passed, Copilot review clean)
+3. **AWAIT** Copilot Code Review (max 15 minutes):
+   - **GET** PR reviews using `get_pull_request_reviews`
+   - **CHECK** for review from `copilot-pull-request-reviewer`:
+     - If found with comments: Continue to step 4
+     - If found with no comments: PR is clean, continue to step 5
+     - If not found: Check if review was requested
+   - **IF** no Copilot review found:
+     - Check PR reviewers to see if Copilot was requested
+     - If not requested: **REQUEST** with `request_copilot_review`, wait 60 seconds, re-check
+     - If requested but no review yet: Wait 60 seconds, re-check
+   - **TIMEOUT** after 15 minutes of waiting:
+     - Execute **Local Code Review** workflow instead
+     - Continue to step 5 if local review passes
+4. **ADDRESS** Copilot review comments:
+   - **GET** review comments using `get_pull_request_comments`
+   - Execute **Address Review Comments** workflow → **GOTO step 1**
+5. **REPORT** PR is ready to merge (CI passed, code review clean)
+
+## Workflow: Local Code Review
+
+**Execute when remote Copilot review times out (fallback):**
+
+1. **GET** PR diff using `get_pull_request_diff`
+2. **ANALYZE** the changes for:
+   - Code style and formatting issues
+   - Potential bugs or logic errors
+   - Missing error handling
+   - Security concerns
+   - Performance issues
+   - Missing tests for new functionality
+3. **IF** issues found:
+   - List issues and ask user: "Found these issues during local review. Fix them?"
+   - If yes: Execute **Address Review Comments** workflow with local findings
+4. **IF** no issues found:
+   - Report: "Local code review passed. No issues found."
 
 ## Workflow: Fix CI Failures
 
