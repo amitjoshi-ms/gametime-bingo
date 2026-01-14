@@ -4,6 +4,53 @@
 
 This prompt guides the release of changes from `main` to the `release` branch for Cloudflare Pages deployment.
 
+## How the Release Workflow Works
+
+The release workflow automates deploying code from `main` to production:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  User triggers workflow (gh workflow run / Actions UI)          │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Environment approval gate (if production environment exists)   │
+│  - Workflow pauses and waits for reviewer approval              │
+│  - Prevents unauthorized releases                               │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  1. Unlock release branch                                       │
+│     - Removes branch protection via GitHub API                  │
+│     - Checks if protection exists first                         │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  2. Fast-forward merge                                          │
+│     - git merge --ff-only origin/main                           │
+│     - Fails if release has diverged (no force overwrites)       │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  3. Create release tag                                          │
+│     - Format: yy.mdd.rev (e.g., 26.114.0)                       │
+│     - Auto-increments revision for same-day releases            │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  4. Re-lock release branch                                      │
+│     - Applies branch protection via GitHub API                  │
+│     - Verifies protection was applied successfully              │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Cloudflare Pages detects push to release branch                │
+│  - Builds and deploys automatically                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why fast-forward only?** Ensures `release` is always an exact subset of `main` — no merge commits, no divergence, full traceability.
+
 ## Prerequisites
 
 - All CI checks passing on `main`
