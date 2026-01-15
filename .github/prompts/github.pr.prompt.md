@@ -1,361 +1,461 @@
 ---
-description: 'Action-driven PR workflow: create, monitor CI, fix failures, address reviews, push changes'
+description: 'Automated PR management: create, monitor CI, fix failures, address reviews, merge'
 tools:
-  # GitHub PR operations
-  - github
-  - create_pull_request
-  - update_pull_request
-  - get_pull_request_diff
-  - list_pull_requests
-  - get_pull_request_reviews
-  - get_pull_request_status
-  - get_pull_request_files
-  - get_pull_request_comments
-  - request_copilot_review
-  - merge_pull_request
-  - get_me
-  - githubRepo
-  # Terminal for running commands (git, npm, gh)
-  - runCommands/runInTerminal
-  - runCommands/getTerminalOutput
-  # File operations (needed for CI fixes and review comments)
-  - editFiles/editFile
-  - editFiles/createFile
-  - changes/getChangedFiles
-  - codebase
-  - codebase/search
-  - findFiles/file_search
-  - findFiles/grep_search
-  - problems/getErrors
+  - github          # PR operations (create, update, status, reviews, merge)
+  - bash            # Run commands (git, npm, gh, tests)
+  - view            # Read files
+  - edit            # Fix issues
+  - grep            # Search code
 ---
 
 # GitHub Pull Request Workflow
 
-You are an automated PR management agent. Execute these workflows step-by-step, taking real actions.
+Automated agent for managing pull requests from creation to merge.
 
-## CRITICAL RULES — DO NOT SKIP STEPS
+## Quick Reference
 
-1. **NEVER merge without Copilot review** — Always request and await Copilot review (or execute Local Code Review if timeout after 15 mins)
-2. **NEVER merge without user confirmation** — Always ask "PR is ready to merge. Merge now?" and wait for explicit "yes"
-3. **NEVER skip steps because a change "seems simple"** — The workflow exists for consistency, not just complex changes
-4. **FOLLOW THE WORKFLOW EXACTLY** — If you find yourself thinking "this step isn't needed", you're wrong. Do it anyway.
-5. **NEVER push without pre-push verification** — Always run **Pre-Push Verification** workflow before every `git push`
+**Common Commands:**
+```bash
+# Create PR
+@workspace /github.pr create
 
-**Important**: All file edits are made **locally** in the workspace, then pushed to remote. This keeps local and remote in sync.
+# Monitor existing PR
+@workspace /github.pr monitor #123
+
+# Check all my PRs
+@workspace /github.pr check
+
+# Drive PR to completion
+@workspace /github.pr drive #123
+```
+
+## Core Principles
+
+**These rules apply to ALL workflows:**
+
+1. **Always verify before pushing** — Run pre-push verification (lint, type check, tests) before every `git push`
+2. **Always request code review** — Never merge without Copilot review or local review fallback
+3. **Always ask before merging** — Get explicit user confirmation: "PR is ready to merge. Merge now?"
+4. **Follow the workflows** — Don't skip steps, even for "simple" changes
+5. **Keep local and remote in sync** — All edits are made locally, then pushed to remote
+
+## Workflow Index
+
+| Workflow | Use Case |
+|----------|----------|
+| [Create PR](#workflow-create-pr) | Create new PR from current branch |
+| [Monitor PR](#workflow-monitor-pr-until-ready) | Poll until PR passes CI and review |
+| [Fix CI Failures](#workflow-fix-ci-failures) | Debug and fix failing CI checks |
+| [Address Review Comments](#workflow-address-review-comments) | Fix issues from code review |
+| [Check My PRs](#workflow-check-my-prs) | List status of all open PRs |
+| [Full Lifecycle](#workflow-full-pr-lifecycle) | Create → Monitor → Merge |
 
 ## Workflow: Create PR
 
-**Execute these steps in order:**
+**Create a draft PR from the current branch.**
 
-1. Run `git branch --show-current` to get branch name
-2. Run `git log main..HEAD --oneline` to see commits
-3. **CHECK** for unpushed commits: `git log origin/<branch>..HEAD --oneline 2>/dev/null || echo "Branch not pushed"`
-   - If unpushed commits exist or branch not pushed:
-     - **EXECUTE** **Pre-Push Verification** workflow (all steps including local code review)
-     - **PUSH** the branch: `git push -u origin <branch>`
-4. Get the diff: `git diff main...HEAD`
-5. Search codebase for `.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE.md`
-6. **CREATE** a draft PR:
-   - Title: `type(scope): description` (infer type from changes)
-   - Body: Generate from diff + template structure
-   - Base: `main` (unless specified otherwise)
-7. **GET** the PR diff using `get_pull_request_diff`
-8. **UPDATE** PR body with detailed description based on actual diff
-9. **REQUEST** Copilot code review using `request_copilot_review`
-10. Report PR number and URL to user
+### Steps
+
+1. **Get branch info:**
+   ```bash
+   git branch --show-current
+   git log main..HEAD --oneline
+   ```
+
+2. **Check for unpushed changes:**
+   ```bash
+   git log origin/<branch>..HEAD --oneline 2>/dev/null || echo "Branch not pushed"
+   ```
+   - If unpushed commits exist → Run [Pre-Push Verification](#workflow-pre-push-verification) → Push branch
+
+3. **Create draft PR:**
+   - Get diff: `git diff main...HEAD`
+   - Check for PR template: `.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE.md`
+   - Title format: `type(scope): description` (infer from commits)
+   - Use template structure in body if exists
+   - Base: `main` (unless specified)
+
+4. **Update with details:**
+   - Get PR diff using GitHub API
+   - Update body with detailed description
+
+5. **Request Copilot review:**
+   - Request review (allow parallel execution with CI)
+
+6. **Report to user:**
+   - PR number and URL
+   - Current status
+
+### Example Output
+
+```
+✅ Created PR #123: feat(game): add multiplayer support
+🔗 https://github.com/owner/repo/pull/123
+📋 Status: Draft, awaiting CI and review
+```
 
 ## Workflow: Monitor PR Until Ready
 
-**Execute these steps, polling until complete. Track `ci_fix_attempts` and `review_cycles` (both start at 0).**
+**Poll PR status until CI passes and code review is complete.**
 
-1. **ENSURE** Copilot review is requested:
-   - **GET** PR status using `get_pull_request_status`
-   - If no "Copilot Code Review" check found: **REQUEST** with `request_copilot_review`
-   - This allows Copilot to run in parallel with CI
-   - Note: Copilot may appear as a check or as a PR review depending on repo configuration
-2. **CHECK** CI status (all checks except Copilot):
-   - If any check `pending`/`in_progress`:
-     - Poll every 30 seconds for up to 10 minutes
-     - After 10 minutes of `pending`/`in_progress`, use exponential backoff: 1min → 2min → 4min → 5min → 5min... (capped)
-     - Stop polling after 60 minutes total and report to user
-   - If any check `failure`:
-     - Increment `ci_fix_attempts`
-     - If `ci_fix_attempts` > 3: **ASK** user "CI has failed 3+ times. Continue fixing?" If no, stop.
-     - Execute **Fix CI Failures** workflow → **GOTO step 1**
-   - If all checks `success`: Continue to step 3
-3. **AWAIT** Copilot Code Review:
-   - Execute **Await Copilot Review** sub-workflow (max 15 minutes)
-   - **IF** review received with comments: Continue to step 4
-   - **IF** review received with no comments: PR is clean, continue to step 5
-   - **IF** timeout (no review after 15 mins): Execute **Local Code Review** workflow, continue to step 5
-4. **ADDRESS** Copilot review comments:
-   - **GET** review comments using `get_pull_request_comments`
-   - Increment `review_cycles`
-   - If `review_cycles` > 3: **ASK** user "This is review cycle #N. Continue addressing comments?" If no, stop.
-   - Execute **Address Review Comments** workflow → **GOTO step 1**
-5. **CHECK** branch is up-to-date:
-   - **GET** PR details and check `mergeable_state`
-   - If `mergeable_state` is `"behind"`:
-     - **UPDATE** branch using `update_pull_request_branch`
-     - **WAIT** 30 seconds for merge to complete
-     - **SYNC** local: `git fetch origin && git pull --rebase origin <branch>`
-     - **GOTO step 1** (CI and review will re-run on updated branch)
-   - If `mergeable_state` is `"dirty"` or `"blocked"`:
-     - **REPORT** merge conflict or blocking issue to user
-     - **STOP** and wait for user guidance
-   - If `mergeable_state` is `"clean"`: Continue to step 6
-6. **REPORT** PR is ready to merge (CI passed, code review clean, branch up-to-date)
+### Tracking Variables
 
-### Sub-workflow: Request Copilot Review
+- `ci_fix_attempts` = 0
+- `review_cycles` = 0
 
-**Execute when no Copilot review found (max 3 attempts):**
+### Main Loop
 
-1. **SET** attempt = 1, max_attempts = 3
-2. **WHILE** attempt <= max_attempts:
-   a. **REQUEST** Copilot review using `request_copilot_review`
-   b. **WAIT** 30 seconds
-   c. **VERIFY** request succeeded:
-      - **GET** PR details to check requested reviewers
-      - **CHECK** if `copilot-pull-request-reviewer` is in reviewers list
-      - If yes: Request successful, **RETURN** success
-      - If no: Log "Copilot request attempt {attempt} failed"
-   d. **INCREMENT** attempt
-   e. **WAIT** 30 seconds before retry
-3. **IF** all attempts failed:
-   - Log "Failed to request Copilot review after 3 attempts"
-   - **RETURN** failure
+Repeat these checks until PR is ready:
 
-### Sub-workflow: Await Copilot Review
+#### 1. Ensure Copilot Review Requested
 
-**Poll for Copilot review (max 15 minutes, 1-minute intervals):**
+- Check PR status for "Copilot Code Review" check
+- If not found → Request review (runs in parallel with CI)
+- May appear as check or PR review depending on repo config
 
-1. **SET** start_time = current_time(), timeout = 15 minutes
-2. **LOOP** while (current_time() - start_time) < timeout:
-   a. **GET** PR reviews using `get_pull_request_reviews`
-   b. **CHECK** for review from `copilot-pull-request-reviewer`:
-      - If found with comments: **RETURN** {status: "comments", review: review}
-      - If found with no comments: **RETURN** {status: "clean"}
-      - If not found: Continue to step c
-   c. **CHECK** if Copilot is in requested reviewers:
-      - If not requested: Execute **Request Copilot Review** sub-workflow
-        - If request failed: **RETURN** {status: "timeout"}
-      - If requested: Log "Waiting for Copilot review..."
-   d. **WAIT** 60 seconds (1-minute polling interval)
-3. **RETURN** {status: "timeout"} (15 minutes elapsed without review)
+#### 2. Monitor CI Status
+
+**Poll every 30s for up to 10 min, then use exponential backoff (1m → 2m → 4m → 5m)**
+
+- If `pending`/`in_progress`: Wait and poll
+- If `failure`:
+  - Increment `ci_fix_attempts`
+  - If `ci_fix_attempts > 3` → Ask user: "CI failed 3+ times. Continue?"
+  - Run [Fix CI Failures](#workflow-fix-ci-failures) → GOTO step 1
+- If all `success`: Continue
+
+#### 3. Await Copilot Review
+
+**Max 15 minutes with 1-minute polls**
+
+- Poll for review from `copilot-pull-request-reviewer`
+- If review with comments → Continue to step 4
+- If review with no comments → PR clean, continue to step 5
+- If timeout (15 min) → Run [Local Code Review](#workflow-local-code-review) → Continue to step 5
+
+#### 4. Address Review Comments (if any)
+
+- Get comments from GitHub
+- Increment `review_cycles`
+- If `review_cycles > 3` → Ask user: "Review cycle #N. Continue?"
+- Run [Address Review Comments](#workflow-address-review-comments) → GOTO step 1
+
+#### 5. Check Branch Up-to-Date
+
+- Get PR `mergeable_state`
+- If `behind`:
+  - Update branch
+  - Wait 30s for merge
+  - Sync local: `git fetch && git pull --rebase`
+  - GOTO step 1 (CI/review will re-run)
+- If `dirty`/`blocked`:
+  - Report conflict/blocking issue
+  - Stop and await user guidance
+- If `clean`: Continue
+
+#### 6. Report Ready
+
+✅ **PR is ready to merge** (CI passed, review clean, branch current)
+
+### Sub-Workflow: Request Copilot Review
+
+**Max 3 attempts with 30s delays:**
+
+```
+FOR attempt = 1 TO 3:
+  - Request review via API
+  - Wait 30s
+  - Check if copilot-pull-request-reviewer in reviewers list
+  - If yes → SUCCESS
+  - Else → Wait 30s and retry
+  
+If all attempts fail → LOG failure
+```
+
+### Sub-Workflow: Await Copilot Review
+
+**Max 15 minutes, 1-minute intervals:**
+
+```
+start_time = now()
+WHILE (now() - start_time) < 15 minutes:
+  - Get PR reviews
+  - Check for copilot-pull-request-reviewer review:
+    - Found with comments → RETURN {status: "comments", review}
+    - Found, no comments → RETURN {status: "clean"}
+    - Not found → Check if requested, if not request again
+  - Wait 60s
+  
+RETURN {status: "timeout"}
+```
 
 ## Workflow: Local Code Review
 
-**Execute when remote Copilot review times out (fallback).**
+**Fallback when remote Copilot review times out.**
 
-> **Reference**: Follow the review standards in `.github/instructions/code-review.instructions.md` and `.github/instructions/documentation-review.instructions.md`
+> **Reference**: See `.github/instructions/code-review.instructions.md` and `.github/instructions/documentation-review.instructions.md`
 
-1. **GET** PR diff using `get_pull_request_diff`
-2. **GET** changed files using `get_pull_request_files` to identify file types
-3. **FOR CODE CHANGES** (`.ts`, `.svelte`, `.js` files):
-   - **READ** review instructions from `.github/instructions/code-review.instructions.md`
-   - **ANALYZE** against the code review checklist:
-     - Correctness: Logic errors, edge cases, error handling
-     - Standards Compliance: TypeScript strict mode, Svelte 5 runes, testing patterns
-     - Security: Input validation, P2P message validation, no hardcoded secrets
-     - Performance: Unnecessary re-renders, memory leaks, payload sizes
-     - Architecture: Pure game logic, isolated network layer, unidirectional state
-4. **FOR DOCUMENTATION CHANGES** (`.md`, `.mdx` files):
-   - **READ** review instructions from `.github/instructions/documentation-review.instructions.md`
-   - **ANALYZE** against the documentation review checklist:
-     - Accuracy: Technical info correct, code examples work, links valid
-     - Clarity: Purpose clear, headings accurate, steps logical
-     - Completeness: Prerequisites listed, error cases documented
-     - Structure: Heading hierarchy correct, code blocks have language
-     - Style: Active voice, concise sentences, correct spelling/grammar
-5. **IF** issues found:
-   - List issues and ask user: "Found these issues during local review. Fix them?"
-   - If yes: Execute **Address Review Comments** workflow with local findings
-6. **IF** no issues found:
-   - Report: "Local code review passed. No issues found."
+### Steps
+
+1. **Get PR changes:**
+   - Get diff
+   - Get changed files (identify `.ts`, `.svelte`, `.js`, `.md`, `.mdx`)
+
+2. **Review code files** (`.ts`, `.svelte`, `.js`):
+   - Read `.github/instructions/code-review.instructions.md`
+   - Check against review standards:
+     - ✅ Correctness (logic, edge cases, errors)
+     - ✅ Standards (TypeScript strict, Svelte 5 runes, testing)
+     - ✅ Security (validation, no secrets, P2P message checks)
+     - ✅ Performance (no unnecessary re-renders, memory leaks)
+     - ✅ Architecture (pure logic, isolated network, state flow)
+
+3. **Review documentation** (`.md`, `.mdx`):
+   - Read `.github/instructions/documentation-review.instructions.md`
+   - Check against review standards:
+     - ✅ Accuracy (correct info, working examples, valid links)
+     - ✅ Clarity (clear purpose, logical steps)
+     - ✅ Completeness (prerequisites, error cases)
+     - ✅ Structure (heading hierarchy, code blocks)
+     - ✅ Style (active voice, concise, correct spelling)
+
+4. **Report findings:**
+   - If issues found → Ask: "Found these issues. Fix them?"
+   - If no issues → Report: "Local review passed."
 
 ## Workflow: Pre-Push Verification
 
 **MANDATORY before every `git push`. No exceptions.**
 
-1. **RUN** lint check:
-   ```bash
-   npm run lint
-   ```
-   - If fails: Fix lint errors before proceeding
+### Quick Command
 
-2. **RUN** type check:
-   ```bash
-   npm run check
-   ```
-   - If fails: Fix type errors before proceeding
-
-3. **RUN** unit tests:
-   ```bash
-   npm run test
-   ```
-   - If fails: Fix failing tests before proceeding
-
-4. **RUN** E2E tests (Chromium-only for fast local verification):
-   ```bash
-   npm run build && npx playwright test --project=chromium --reporter=list
-   ```
-   - This runs only `chromium` project to keep pre-push checks fast; full cross-browser E2E runs in CI
-   - Use `--reporter=list` to avoid interactive HTML report that blocks automation
-   - If fails: Fix failing E2E tests before proceeding
-
-5. **PERFORM** local code review:
-   - Review the changes that will be pushed:
-     - For unstaged changes: `git diff`
-     - For staged but uncommitted changes: `git diff --staged`
-     - For the most recent commit (after Fix CI/Address Review): `git show HEAD` or `git diff HEAD~1`
-     - For all local commits not yet pushed: `git diff origin/<branch>..HEAD`
-   - **IDENTIFY** changed file types: `git diff --name-only origin/<branch>..HEAD`
-   - **FOR CODE CHANGES** (`.ts`, `.svelte`, `.js` files):
-     - **READ** review instructions from `.github/instructions/code-review.instructions.md`
-     - **APPLY** the review checklist:
-       - Correctness: Logic errors, edge cases, error handling
-       - Standards Compliance: TypeScript strict mode, Svelte 5 runes, testing patterns
-       - Security: Input validation, P2P message validation, no hardcoded secrets
-       - Performance: Unnecessary re-renders, memory leaks, payload sizes
-       - Architecture: Pure game logic, isolated network layer, unidirectional state
-   - **FOR DOCUMENTATION CHANGES** (`.md`, `.mdx` files):
-     - **READ** review instructions from `.github/instructions/documentation-review.instructions.md`
-     - **APPLY** the review checklist:
-       - Accuracy: Technical info correct, code examples work, links valid
-       - Clarity: Purpose clear, headings accurate, steps logical
-       - Completeness: Prerequisites listed, error cases documented
-       - Structure: Heading hierarchy correct, code blocks have language
-       - Style: Active voice, concise sentences, correct spelling/grammar
-   - If issues found: Fix them before proceeding
-
-6. **ALL CHECKS PASSED**: Proceed with `git push`
-
-**Quick command to run all checks:**
 ```bash
-npm run lint && npm run check && npm run test && npm run build && npx playwright test --project=chromium --reporter=list
+npm run lint && npm run check && npm run test && \
+npm run build && npx playwright test --project=chromium --reporter=list
 ```
+
+### Steps
+
+1. **Lint:** `npm run lint` (fix errors if any)
+2. **Type check:** `npm run check` (fix errors if any)
+3. **Unit tests:** `npm run test` (fix failures if any)
+4. **Build:** `npm run build` (fix errors if any)
+5. **E2E tests (Chromium only):**
+   ```bash
+   npx playwright test --project=chromium --reporter=list
+   ```
+   - Fast local verification (full cross-browser runs in CI)
+   - Fix failures if any
+
+6. **Local code review:**
+   - Review changes to be pushed:
+     ```bash
+     git diff origin/<branch>..HEAD  # All unpushed changes
+     git diff --name-only origin/<branch>..HEAD  # Changed files
+     ```
+   - **For code files**: Apply code review checklist from `.github/instructions/code-review.instructions.md`
+   - **For docs**: Apply doc review checklist from `.github/instructions/documentation-review.instructions.md`
+   - Fix issues if found
+
+7. **All checks passed** → Proceed with `git push`
+
+### Note on Skipping Steps
+
+When running this workflow after fixing CI failures or review comments, you may skip steps 1-4 for checks you just ran successfully. **Step 6 (local code review) is always mandatory.**
 
 ## Workflow: Fix CI Failures
 
-**All edits are made locally, verified, then pushed to remote.**
+**Debug and fix failing CI checks. All edits made locally, then pushed.**
 
-**Execute these steps for each failing check:**
+### Steps for Each Failing Check
 
-1. **SYNC** local branch with remote: `git pull --rebase origin <branch>`
-2. **GET** PR status using `get_pull_request_status` to identify failing checks
-   - For GitHub Actions checks, extract the run ID from:
-     - The `workflow_run.id` or `run_id` field in the check payload, OR
-     - The `details_url` like `https://github.com/<org>/<repo>/actions/runs/<run-id>` (extract the numeric ID after `/runs/`)
-   - For external CI providers (no `/actions/runs/` URL), note that `gh run view` won't work; skip to step 4 and analyze from the check's output directly
-3. **RUN** `gh run view <run-id> --log-failed` to get failure logs (for GitHub Actions only)
-   - Replace `<run-id>` with the numeric ID extracted in step 2
-4. **ANALYZE** the error output:
-   - Identify the failing file(s) and line(s)
+1. **Sync local:** `git pull --rebase origin <branch>`
+
+2. **Identify failure:**
+   - Get PR status to find failing checks
+   - For GitHub Actions: Extract run ID from `details_url` (e.g., `/actions/runs/<run-id>`)
+   - For external CI: Skip to step 4
+
+3. **Get logs (GitHub Actions only):**
+   ```bash
+   gh run view <run-id> --log-failed
+   ```
+
+4. **Analyze error:**
+   - Identify failing files and lines
    - Determine root cause (lint, test, build, type error)
-5. **READ** the failing file(s) from local codebase
-6. **EDIT** files locally to fix the issues:
-   - For lint errors: Apply formatting/style fixes
-   - For test failures: Fix the test or the code being tested
-   - For type errors: Add types, fix signatures
-   - For build errors: Fix imports, dependencies
-7. **RUN** the relevant check(s) locally to verify fix works:
-   - `npm run lint` for lint errors
-   - `npm run check` for TypeScript type errors
-   - `npm run test` for unit test failures
-   - `npm run build` for build errors
-   - `npm run build && npx playwright test --project=chromium --reporter=list` for E2E failures
-8. **IF** local check(s) **fail**:
-   - Analyze the new error output
-   - Go back to step 6 to refine the fix
-   - **DO NOT** commit or push until local check(s) pass
-9. **IF** local check(s) **pass**:
-   - **STAGE** only the files you modified: `git add <file1> <file2> ...`
-   - Review staged changes with `git diff --staged` before committing
-   - **COMMIT** fixes: `git commit -m "fix: address CI failures"`
-10. **EXECUTE** **Pre-Push Verification** workflow: you may **skip Pre-Push steps 1-4** for any checks you just ran successfully in step 7-8 (to avoid redundant runs), but **Pre-Push step 5 (local code review) is mandatory**.
-11. **PUSH** changes: `git push`
-    - If push fails due to conflicts: `git pull --rebase && git push`
-12. **RETURN** to Monitor workflow to re-check CI
+
+5. **Fix locally:**
+   - Read failing files
+   - Edit to fix issues
+   - Run relevant check to verify:
+     ```bash
+     npm run lint       # For lint errors
+     npm run check      # For type errors
+     npm run test       # For unit test failures
+     npm run build      # For build errors
+     npx playwright test --project=chromium --reporter=list  # For E2E failures
+     ```
+
+6. **Verify fix:**
+   - If local check fails → Refine fix (go to step 5)
+   - If local check passes → Continue
+
+7. **Commit:**
+   ```bash
+   git add <fixed-files>
+   git diff --staged  # Review before commit
+   git commit -m "fix: address CI failures"
+   ```
+
+8. **Pre-push verification:**
+   - Run [Pre-Push Verification](#workflow-pre-push-verification)
+   - May skip steps 1-4 for checks already run in step 5
+   - **Step 6 (local code review) is mandatory**
+
+9. **Push:** `git push` (use `git pull --rebase && git push` if conflicts)
+
+10. **Return to [Monitor](#workflow-monitor-pr-until-ready)** to re-check CI
 
 ## Workflow: Address Review Comments
 
-**All edits are made locally, then pushed to remote to keep local and remote in sync.**
+**Fix issues from code review. All edits made locally, then pushed.**
 
-**Execute these steps for each review comment:**
+### Steps
 
-1. **SYNC** local branch with remote: `git pull --rebase origin <branch>`
-   - This ensures you have the latest code before making changes
-2. **GET** review comments using `get_pull_request_comments`
-3. **GET** review threads using `get_pull_request_reviews` with comments
-4. **FOR EACH** unresolved comment thread:
-   a. **READ** the file and line(s) mentioned from local codebase
-   b. **ANALYZE** what the reviewer is asking for
-   c. **EDIT** the local file to address the feedback
-   d. **REPLY** to the comment explaining the change made
-   e. **RESOLVE** the comment thread (mark as resolved) if the fix is complete
-5. **RUN** relevant checks locally to verify no regressions:
-   - `npm run lint && npm run check && npm run test`
-   - For UI changes: `npm run build && npx playwright test --project=chromium --reporter=list`
-6. **STAGE** only the files you modified: `git add <file1> <file2> ...`
-   - Alternatively, use `git add -p` for interactive staging
-   - Verify with `git diff --staged` that only intended changes are staged
-7. **COMMIT** changes: `git commit -m "fix: address review comments"`
-8. **EXECUTE** **Pre-Push Verification** workflow: you may **skip Pre-Push steps 1-4** for any checks you just ran successfully in step 5 (to avoid redundant runs), but **Pre-Push step 5 (local code review) is mandatory**.
-9. **PUSH** changes: `git push`
-   - If push fails due to conflicts: `git pull --rebase && git push`
-10. **RE-REQUEST** review from Copilot (may auto-trigger on push depending on repo settings) and from human reviewers who requested changes
-11. **RETURN** to Monitor workflow
+1. **Sync local:** `git pull --rebase origin <branch>`
+
+2. **Get review feedback:**
+   - Get comments via GitHub API
+   - Get review threads
+
+3. **For each unresolved comment:**
+   - Read file and lines mentioned
+   - Understand reviewer's request
+   - Edit local file to address feedback
+   - Reply to comment explaining the change
+   - Resolve thread if fix is complete
+
+4. **Verify changes:**
+   ```bash
+   npm run lint && npm run check && npm run test
+   # For UI changes, also run:
+   npm run build && npx playwright test --project=chromium --reporter=list
+   ```
+
+5. **Commit:**
+   ```bash
+   git add <fixed-files>
+   git diff --staged  # Review before commit
+   git commit -m "fix: address review comments"
+   ```
+
+6. **Pre-push verification:**
+   - Run [Pre-Push Verification](#workflow-pre-push-verification)
+   - May skip steps 1-4 for checks already run in step 4
+   - **Step 6 (local code review) is mandatory**
+
+7. **Push:** `git push` (use `git pull --rebase && git push` if conflicts)
+
+8. **Re-request review:**
+   - From Copilot (may auto-trigger)
+   - From human reviewers who requested changes
+
+9. **Return to [Monitor](#workflow-monitor-pr-until-ready)**
 
 ## Workflow: Check My PRs
 
-**Execute these steps:**
+**List status of all open PRs authored by you.**
 
-1. **GET** current user with `get_me`
-2. **LIST** open PRs using `list_pull_requests` with state=open
-3. **FOR EACH** PR authored by current user:
-   a. **GET** status using `get_pull_request_status`
-   b. **GET** reviews using `get_pull_request_reviews`
-   c. **REPORT**:
-      - PR #, title, branch
-      - CI: ✅ passing | ❌ failing | ⏳ pending
-      - Reviews: ✅ approved | 🔄 changes requested | ⏳ pending
-      - Ready to merge: Yes/No
-4. **OFFER** to run Monitor workflow on any PR
+### Steps
+
+1. Get current user
+2. List open PRs where author = current user
+3. For each PR, report:
+   - PR number, title, branch
+   - CI status: ✅ passing | ❌ failing | ⏳ pending
+   - Reviews: ✅ approved | 🔄 changes requested | ⏳ pending
+   - Ready to merge: Yes/No
+4. Offer to run Monitor workflow on any PR
+
+### Example Output
+
+```
+Your Open PRs:
+
+#123: feat(game): add multiplayer support
+  Branch: feature/multiplayer
+  CI: ✅ passing
+  Review: ⏳ pending
+  Ready: No (awaiting review)
+
+#118: fix(ui): correct button alignment
+  Branch: fix/button-align
+  CI: ❌ failing (lint errors)
+  Review: ⏳ pending
+  Ready: No (CI failing)
+
+Would you like me to monitor or fix any of these?
+```
 
 ## Workflow: Full PR Lifecycle
 
-**For "drive this PR" or "get this PR merged":**
+**Drive PR from creation to merge (or existing PR to merge).**
 
-1. Execute **Create PR** workflow (if no PR exists)
-2. Execute **Monitor PR Until Ready** workflow
-3. **STOP AND ASK**: "PR is ready to merge. Merge now?" — **WAIT for explicit user response**
-4. **ONLY if user says "yes"**: Merge using `merge_pull_request`
-5. Sync local: `git checkout main && git pull && git branch -d <branch>`
+### Steps
 
-## Commands Reference
+1. If no PR exists → Run [Create PR](#workflow-create-pr)
+2. Run [Monitor PR Until Ready](#workflow-monitor-pr-until-ready)
+3. **STOP AND ASK:** "PR is ready to merge. Merge now?"
+   - Wait for explicit "yes" from user
+4. **ONLY if user confirms:**
+   - Merge PR
+   - Clean up local:
+     ```bash
+     git checkout main
+     git pull
+     git branch -d <feature-branch>
+     ```
 
-These commands assume dependencies are installed (run `npm ci` first to install from lockfile).
+### Example Usage
 
-| Action | Command |
-|--------|---------|
-| Sync with remote | `git pull --rebase origin <branch>` |
-| Check CI locally (full) | `npm run lint && npm run check && npm run test && npm run build` |
-| Lint only | `npm run lint` |
-| Type check only | `npm run check` |
-| Unit tests only | `npm run test` |
-| E2E tests | `npm run build && npx playwright test --project=chromium --reporter=list` |
-| View failed run | `gh run view <id> --log-failed` |
-| Re-run checks | `gh run rerun <id> --failed` |
-| Push changes | `git add <files> && git commit -m "msg" && git push` |
+```
+User: "Drive PR #123 to completion"
+Agent: [Monitors PR, fixes CI, addresses reviews]
+Agent: "✅ PR #123 is ready to merge. Merge now?"
+User: "yes"
+Agent: [Merges PR, cleans up branch]
+```
 
 ## Decision Tree
 
 ```
-User Request
-├── "create PR" → Create PR workflow
-├── "check my PRs" → Check My PRs workflow
-├── "fix PR #N" → Monitor PR Until Ready workflow
-├── "address comments on #N" → Address Review Comments workflow
-├── "fix CI on #N" → Fix CI Failures workflow
-└── "drive PR #N" / "land PR #N" → Full PR Lifecycle workflow
+User Request → Action
+
+"create PR"           → Create PR workflow
+"monitor PR #N"       → Monitor PR Until Ready workflow
+"fix CI on #N"        → Fix CI Failures workflow
+"address comments #N" → Address Review Comments workflow
+"check my PRs"        → Check My PRs workflow
+"drive PR #N"         → Full PR Lifecycle workflow
+"land PR #N"          → Full PR Lifecycle workflow
 ```
+
+## Commands Reference
+
+Assumes dependencies installed (`npm ci` to install from lockfile).
+
+| Action | Command |
+|--------|---------|
+| Sync with remote | `git pull --rebase origin <branch>` |
+| Full verification | `npm run lint && npm run check && npm run test && npm run build` |
+| Lint only | `npm run lint` |
+| Type check | `npm run check` |
+| Unit tests | `npm run test` |
+| E2E tests (fast) | `npx playwright test --project=chromium --reporter=list` |
+| View failed run | `gh run view <id> --log-failed` |
+| Re-run failed | `gh run rerun <id> --failed` |
+| Stage & commit | `git add <files> && git commit -m "msg"` |
+| Push changes | `git push` |
+| Review staged | `git diff --staged` |
+| Review unpushed | `git diff origin/<branch>..HEAD` |
