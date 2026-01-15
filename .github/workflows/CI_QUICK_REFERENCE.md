@@ -158,7 +158,7 @@ git commit -m "docs: update README [skip ci]"
 
 ## Node.js Version
 
-The CI uses Node.js v22 (required by Waku dependencies).
+The CI uses Node.js v22 (minimum version required by Waku dependencies; >= 22 supported).
 
 To match locally:
 

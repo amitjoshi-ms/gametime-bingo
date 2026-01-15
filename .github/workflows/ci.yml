@@ -1,7 +1,7 @@
 # CI Workflow for gametime-bingo
 #
 # Improvements over previous version:
-# - Updated Node.js to v22 (required by Waku dependencies)
+# - Updated Node.js to v22 (minimum version required by Waku dependencies)
 # - Added concurrency control to cancel redundant runs
 # - Optimized caching strategy (node_modules + Playwright browsers)
 # - Added job dependencies for better parallelization
@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Single job for installing dependencies to share with downstream jobs
+  # Single job for installing dependencies and populating cache for downstream jobs
   setup:
     name: Setup & Install Dependencies
     runs-on: ubuntu-latest
