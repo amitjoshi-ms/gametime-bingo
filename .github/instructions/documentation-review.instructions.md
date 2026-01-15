@@ -88,12 +88,12 @@ Look for:
 
 ```markdown
 <!-- ❌ Missing context -->
-Run `pnpm test` to verify.
+Run `npm test` to verify.
 
 <!-- ✅ With context -->
 After making changes, verify tests pass:
 ```bash
-pnpm test
+npm test
 ```
 
 This runs the Vitest unit test suite.
@@ -120,15 +120,15 @@ export default defineConfig({
 ```markdown
 <!-- ❌ Inconsistent -->
 Run these commands:
-- `pnpm install`
-- pnpm dev
-- Run `pnpm build`
+- `npm install`
+- npm run dev
+- Run `npm run build`
 
 <!-- ✅ Consistent -->
 Run these commands:
-- `pnpm install`
-- `pnpm dev`
-- `pnpm build`
+- `npm install`
+- `npm run dev`
+- `npm run build`
 ```
 
 ## Comment Types
@@ -137,7 +137,7 @@ Run these commands:
 
 ```
 🔴 **Error**: This command has been deprecated since v2.0.
-The correct command is `pnpm check`.
+The correct command is `npm run check`.
 ```
 
 ### Clarity Issues

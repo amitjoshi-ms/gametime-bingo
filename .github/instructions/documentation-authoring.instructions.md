@@ -217,7 +217,7 @@ In order to start the development server, you will need to execute the following
 <!-- ✅ Concise -->
 Start the development server:
 ```bash
-pnpm dev
+npm run dev
 ```
 ```
 
@@ -240,7 +240,7 @@ Make sure the code is good.
 <!-- ✅ Specific -->
 Ensure TypeScript compiles without errors:
 ```bash
-pnpm check
+npm run check
 ```
 ```
 

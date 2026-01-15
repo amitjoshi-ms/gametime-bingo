@@ -67,9 +67,9 @@ function validateCard(card: BingoCard, calledNumbers: Set<number>): ValidationRe
   // ...
 }
 
-// ✅ Good: Use generics for reusable functions
-function clamp<T extends number>(value: T, min: T, max: T): T {
-  return Math.max(min, Math.min(max, value)) as T;
+// ✅ Good: Use clear parameter and return types
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 ```
 
@@ -160,8 +160,8 @@ function validateNumber(value: unknown): ValidationResult<number> {
   if (typeof value !== 'number') {
     return { success: false, error: 'Expected number' };
   }
-  if (value < 1 || value > 75) {
-    return { success: false, error: 'Number must be 1-75' };
+  if (value < 1 || value > 25) {
+    return { success: false, error: 'Number must be 1-25' };
   }
   return { success: true, value };
 }
@@ -250,9 +250,9 @@ window.location.hash = roomId;
 
 Before committing code:
 
-- [ ] TypeScript compiles without errors (`pnpm check`)
-- [ ] ESLint passes (`pnpm lint`)
-- [ ] Unit tests pass (`pnpm test`)
+- [ ] TypeScript compiles without errors (`npm run check`)
+- [ ] ESLint passes (`npm run lint`)
+- [ ] Unit tests pass (`npm test`)
 - [ ] No `any` types (use `unknown` if needed)
 - [ ] Functions have explicit return types
 - [ ] Components use Svelte 5 runes
@@ -262,10 +262,10 @@ Before committing code:
 ## Commands
 
 ```bash
-pnpm dev          # Start development server
-pnpm build        # Build for production
-pnpm check        # TypeScript type checking
-pnpm lint         # ESLint
-pnpm test         # Run unit tests
-pnpm test:e2e     # Run E2E tests
+npm run dev       # Start development server
+npm run build     # Build for production
+npm run check     # TypeScript type checking
+npm run lint      # ESLint
+npm test          # Run unit tests
+npm run test:e2e  # Run E2E tests
 ```

@@ -313,10 +313,10 @@ Before submitting tests:
 ## Commands
 
 ```bash
-pnpm test                    # Run unit tests
-pnpm test:watch              # Run unit tests in watch mode
-pnpm test -- --coverage      # Run with coverage report (requires vitest config)
-pnpm test:e2e                # Run E2E tests (headless)
-pnpm test:e2e --headed       # Run E2E tests (visible browser)
-pnpm test:e2e --debug        # Run E2E tests with debugger
+npm test                     # Run unit tests
+npm run test:watch           # Run unit tests in watch mode
+npm test -- --coverage       # Run with coverage report (requires vitest config)
+npm run test:e2e             # Run E2E tests (headless)
+npm run test:e2e -- --headed # Run E2E tests (visible browser)
+npm run test:e2e -- --debug  # Run E2E tests with debugger
 ```
