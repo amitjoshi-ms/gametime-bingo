@@ -120,11 +120,11 @@ function autoSkipTurn(playerId: string): void {
   const nextTurnIndex = (hostSession.currentTurnIndex + 1) % hostSession.players.length;
   hostSession = advanceTurn(hostSession);
   
-  // Broadcast turn skip as a number-called with number 0 (skip indicator)
+  // Broadcast turn skip as a num-called with number 0 (skip indicator)
   const actions = getActions();
   if (actions) {
     const numberCalledPayload: NumberCalledPayload = {
-      type: 'number-called',
+      type: 'num-called',
       number: 0, // 0 indicates a skipped turn (no actual number called)
       calledBy: playerId,
       nextTurnIndex,
@@ -202,7 +202,7 @@ export function handlePlayerJoin(
 
 /**
  * Handles a call-number request.
- * Validates turn and number, broadcasts number-called.
+ * Validates turn and number, broadcasts num-called.
  */
 export function handleCallNumber(
   payload: CallNumberPayload,
@@ -236,11 +236,11 @@ export function handleCallNumber(
     const nextTurnIndex = (hostSession.currentTurnIndex + 1) % hostSession.players.length;
     hostSession = advanceTurn(hostSession);
     
-    // Broadcast number-called to all
+    // Broadcast num-called to all
     const actions = getActions();
     if (actions) {
       const numberCalledPayload: NumberCalledPayload = {
-        type: 'number-called',
+        type: 'num-called',
         number: payload.number,
         calledBy: payload.playerId,
         nextTurnIndex,
@@ -261,7 +261,7 @@ export function handleCallNumber(
 }
 
 /**
- * Handles a declare-winner request.
+ * Handles a claim-win request.
  * Validates the claim and broadcasts game-over if valid.
  */
 export function handleDeclareWinner(
@@ -269,18 +269,18 @@ export function handleDeclareWinner(
   peerId: string
 ): GameSession | null {
   if (!hostSession) {
-    sendError(peerId, 'NO_SESSION', 'No active session', 'declare-winner');
+    sendError(peerId, 'NO_SESSION', 'No active session', 'claim-win');
     return null;
   }
 
   if (hostSession.status !== 'playing') {
-    sendError(peerId, 'NOT_PLAYING', 'Game is not in progress', 'declare-winner');
+    sendError(peerId, 'NOT_PLAYING', 'Game is not in progress', 'claim-win');
     return null;
   }
 
   // Validate claimed lines
   if (payload.completedLineCount < LINES_TO_WIN) {
-    sendError(peerId, 'NOT_ENOUGH_LINES', 'Not enough lines to win', 'declare-winner');
+    sendError(peerId, 'NOT_ENOUGH_LINES', 'Not enough lines to win', 'claim-win');
     return null;
   }
 
@@ -289,7 +289,7 @@ export function handleDeclareWinner(
   const isValidClaim = validateWinClaim(payload.completedLines, hostSession.calledNumbers);
   
   if (!isValidClaim) {
-    sendError(peerId, 'INVALID_CLAIM', 'Invalid win claim', 'declare-winner');
+    sendError(peerId, 'INVALID_CLAIM', 'Invalid win claim', 'claim-win');
     return null;
   }
 
@@ -494,7 +494,7 @@ export function determineNextHost(currentHostId: string): string | null {
 
 /**
  * Handles host transfer when the current host disconnects.
- * Should be called by the new host after receiving host-transfer message.
+ * Should be called by the new host after receiving new-host message.
  */
 export function becomeHost(session: GameSession, localPlayerId: string): void {
   // Update session to reflect new host
@@ -524,14 +524,14 @@ export function becomeHost(session: GameSession, localPlayerId: string): void {
 }
 
 /**
- * Broadcasts a host-transfer message to all peers.
+ * Broadcasts a new-host message to all peers.
  */
 export function broadcastHostTransfer(newHostId: string, reason: 'disconnect' | 'manual'): void {
   const actions = getActions();
   if (!actions) return;
 
   const payload: HostTransferPayload = {
-    type: 'host-transfer',
+    type: 'new-host',
     newHostId,
     reason,
   };

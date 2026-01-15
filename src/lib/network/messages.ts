@@ -106,7 +106,7 @@ export interface CallNumberPayload {
  */
 export interface NumberCalledPayload {
   [key: string]: JsonValue;
-  type: 'number-called';
+  type: 'num-called';
   number: number;
   calledBy: string;
   nextTurnIndex: number;
@@ -118,7 +118,7 @@ export interface NumberCalledPayload {
  */
 export interface DeclareWinnerPayload {
   [key: string]: JsonValue;
-  type: 'declare-winner';
+  type: 'claim-win';
   playerId: string;
   completedLineCount: number;
   completedLines: SerializableLineDefinition[];
@@ -159,7 +159,7 @@ export interface PongPayload {
  */
 export interface HostTransferPayload {
   [key: string]: JsonValue;
-  type: 'host-transfer';
+  type: 'new-host';
   newHostId: string;
   reason: 'disconnect' | 'manual';
 }
@@ -219,11 +219,11 @@ export function isCallNumber(msg: MessagePayload): msg is CallNumberPayload {
 }
 
 export function isNumberCalled(msg: MessagePayload): msg is NumberCalledPayload {
-  return msg.type === 'number-called';
+  return msg.type === 'num-called';
 }
 
 export function isDeclareWinner(msg: MessagePayload): msg is DeclareWinnerPayload {
-  return msg.type === 'declare-winner';
+  return msg.type === 'claim-win';
 }
 
 export function isGameOver(msg: MessagePayload): msg is GameOverPayload {
@@ -239,7 +239,7 @@ export function isPong(msg: MessagePayload): msg is PongPayload {
 }
 
 export function isHostTransfer(msg: MessagePayload): msg is HostTransferPayload {
-  return msg.type === 'host-transfer';
+  return msg.type === 'new-host';
 }
 
 export function isError(msg: MessagePayload): msg is ErrorPayload {
