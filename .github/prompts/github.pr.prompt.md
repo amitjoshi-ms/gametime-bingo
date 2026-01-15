@@ -234,7 +234,7 @@ npm run lint && npm run check && npm run test && npm run build && npx playwright
    - **STAGE** only the files you modified: `git add <file1> <file2> ...`
    - Review staged changes with `git diff --staged` before committing
    - **COMMIT** fixes: `git commit -m "fix: address CI failures"`
-10. **EXECUTE** **Pre-Push Verification** workflow, **skipping any checks you just ran successfully in step 7-8** (to avoid redundant runs). Always perform local code review (step 5).
+10. **EXECUTE** **Pre-Push Verification** workflow: you may **skip Pre-Push steps 1-4** for any checks you just ran successfully in step 7-8 (to avoid redundant runs), but **Pre-Push step 5 (local code review) is mandatory**.
 11. **PUSH** changes: `git push`
     - If push fails due to conflicts: `git pull --rebase && git push`
 12. **RETURN** to Monitor workflow to re-check CI
@@ -262,7 +262,7 @@ npm run lint && npm run check && npm run test && npm run build && npx playwright
    - Alternatively, use `git add -p` for interactive staging
    - Verify with `git diff --staged` that only intended changes are staged
 7. **COMMIT** changes: `git commit -m "fix: address review comments"`
-8. **EXECUTE** **Pre-Push Verification** workflow, **skipping any checks you just ran successfully in step 5** (to avoid redundant runs). Always perform local code review.
+8. **EXECUTE** **Pre-Push Verification** workflow: you may **skip Pre-Push steps 1-4** for any checks you just ran successfully in step 5 (to avoid redundant runs), but **Pre-Push step 5 (local code review) is mandatory**.
 9. **PUSH** changes: `git push`
    - If push fails due to conflicts: `git pull --rebase && git push`
 10. **RE-REQUEST** review from Copilot (may auto-trigger on push depending on repo settings) and from human reviewers who requested changes
