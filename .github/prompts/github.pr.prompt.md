@@ -39,6 +39,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 2. **NEVER merge without user confirmation** — Always ask "PR is ready to merge. Merge now?" and wait for explicit "yes"
 3. **NEVER skip steps because a change "seems simple"** — The workflow exists for consistency, not just complex changes
 4. **FOLLOW THE WORKFLOW EXACTLY** — If you find yourself thinking "this step isn't needed", you're wrong. Do it anyway.
+5. **NEVER push without pre-push verification** — Always run **Pre-Push Verification** workflow before every `git push`
 
 **Important**: All file edits are made **locally** in the workspace, then pushed to remote. This keeps local and remote in sync.
 
@@ -145,6 +146,52 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 4. **IF** no issues found:
    - Report: "Local code review passed. No issues found."
 
+## Workflow: Pre-Push Verification
+
+**MANDATORY before every `git push`. No exceptions.**
+
+1. **RUN** lint check:
+   ```bash
+   npm run lint
+   ```
+   - If fails: Fix lint errors before proceeding
+
+2. **RUN** type check:
+   ```bash
+   npm run check
+   ```
+   - If fails: Fix type errors before proceeding
+
+3. **RUN** unit tests:
+   ```bash
+   npm run test
+   ```
+   - If fails: Fix failing tests before proceeding
+
+4. **RUN** E2E tests:
+   ```bash
+   npm run build && npx playwright test --project=chromium
+   ```
+   - If fails: Fix failing E2E tests before proceeding
+
+5. **PERFORM** local code review:
+   - Review staged changes: `git diff --staged` (or `git diff` if not yet staged)
+   - Check for:
+     - Code style and formatting issues
+     - Potential bugs or logic errors
+     - Missing error handling
+     - Security concerns (hardcoded secrets, injection vulnerabilities)
+     - Performance issues
+     - Missing tests for new functionality
+   - If issues found: Fix them before proceeding
+
+6. **ALL CHECKS PASSED**: Proceed with `git push`
+
+**Quick command to run all checks:**
+```bash
+npm run lint && npm run check && npm run test && npm run build && npx playwright test --project=chromium
+```
+
 ## Workflow: Fix CI Failures
 
 **All edits are made locally, verified, then pushed to remote.**
@@ -180,11 +227,12 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - **DO NOT** commit or push until local check(s) pass
 9. **IF** local check(s) **pass**:
    - **STAGE** only the files you modified: `git add <file1> <file2> ...`
-   - Alternatively, review staged changes with `git diff --staged` before committing
+   - Review staged changes with `git diff --staged` before committing
    - **COMMIT** fixes: `git commit -m "fix: address CI failures"`
-10. **PUSH** changes: `git push`
+10. **EXECUTE** **Pre-Push Verification** workflow (full suite: lint, check, test, E2E, local review)
+11. **PUSH** changes: `git push`
     - If push fails due to conflicts: `git pull --rebase && git push`
-11. **RETURN** to Monitor workflow to re-check CI
+12. **RETURN** to Monitor workflow to re-check CI
 
 ## Workflow: Address Review Comments
 
@@ -202,13 +250,11 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    c. **EDIT** the local file to address the feedback
    d. **REPLY** to the comment explaining the change made
    e. **RESOLVE** the comment thread (mark as resolved) if the fix is complete
-5. **VERIFY** changes locally (if applicable):
-   - Run relevant checks: `npm run lint`, `npm run check`, `npm run test`
-   - Ensure no regressions introduced
-6. **STAGE** only the files you modified: `git add <file1> <file2> ...`
+5. **STAGE** only the files you modified: `git add <file1> <file2> ...`
    - Alternatively, use `git add -p` for interactive staging
    - Verify with `git diff --staged` that only intended changes are staged
-7. **COMMIT** changes: `git commit -m "fix: address review comments"`
+6. **COMMIT** changes: `git commit -m "fix: address review comments"`
+7. **EXECUTE** **Pre-Push Verification** workflow (full suite: lint, check, test, E2E, local review)
 8. **PUSH** changes: `git push`
    - If push fails due to conflicts: `git pull --rebase && git push`
 9. **RE-REQUEST** review from Copilot (may auto-trigger on push depending on repo settings) and from human reviewers who requested changes
