@@ -23,7 +23,7 @@ tests/
 
 ## Commands
 
-pnpm dev; pnpm test; pnpm lint
+npm run dev; npm run test; npm run lint
 
 ## Code Style
 
