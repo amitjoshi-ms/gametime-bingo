@@ -35,7 +35,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 ## CRITICAL RULES — DO NOT SKIP STEPS
 
-1. **NEVER merge without Copilot review** — Always request and await Copilot review (or timeout after 15 mins)
+1. **NEVER merge without Copilot review** — Always request and await Copilot review (or execute Local Code Review if timeout after 15 mins)
 2. **NEVER merge without user confirmation** — Always ask "PR is ready to merge. Merge now?" and wait for explicit "yes"
 3. **NEVER skip steps because a change "seems simple"** — The workflow exists for consistency, not just complex changes
 4. **FOLLOW THE WORKFLOW EXACTLY** — If you find yourself thinking "this step isn't needed", you're wrong. Do it anyway.
@@ -238,7 +238,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 2. Execute **Monitor PR Until Ready** workflow
 3. **STOP AND ASK**: "PR is ready to merge. Merge now?" — **WAIT for explicit user response**
 4. **ONLY if user says "yes"**: Merge using `merge_pull_request`
-5. Sync local: `git checkout main && git pull && git branch -D <branch>`
+5. Sync local: `git checkout main && git pull && git branch -d <branch>`
 
 ## Commands Reference
 
