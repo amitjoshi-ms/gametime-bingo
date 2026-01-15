@@ -263,15 +263,11 @@ The `release` branch is connected to Cloudflare Pages for production deployment.
 
 ## Rollback
 
-If a release has issues, use the rollback workflow:
+If a release has issues, use Cloudflare Dashboard for immediate rollback:
 
-```powershell
-# Trigger rollback to a specific version
-gh workflow run rollback.yml -f tag=v1.0.0 -f confirm=rollback
-
-# Get run ID and watch
-$runId = (gh run list --workflow=rollback.yml --limit 1 --json databaseId --jq '.[0].databaseId')
-gh run watch $runId
-```
+1. Go to Cloudflare Pages dashboard
+2. Select gametime-bingo project  
+3. Find previous successful deployment
+4. Click "Retry deployment"
 
 See `.github/instructions/production-release.instructions.md` for detailed rollback procedures.

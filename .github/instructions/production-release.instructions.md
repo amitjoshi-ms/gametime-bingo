@@ -33,21 +33,6 @@ After deployment completes, verify:
 
 ## Rollback Procedures
 
-### Quick Rollback (GitHub Actions Workflow)
-
-Use the automated rollback workflow for fastest rollback:
-
-1. Go to **Actions** → **Rollback Release**
-2. Click **Run workflow**
-3. Enter the target tag to rollback to (e.g., `v1.0.0`)
-4. Type `rollback` to confirm
-5. Approve the production environment deployment
-6. The workflow will:
-   - Reset the `release` branch to the target tag
-   - Create a rollback tag for tracking
-   - Trigger Cloudflare redeployment
-   - Verify the site is accessible
-
 ### Quick Rollback (Cloudflare Dashboard)
 
 For immediate rollback without GitHub Actions:

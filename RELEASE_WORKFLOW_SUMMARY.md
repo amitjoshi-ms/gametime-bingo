@@ -51,22 +51,12 @@ The release workflow has been completely revamped to address all requirements fr
    - Check production site accessibility
    - Verify HTML content
 
-### 2. New Rollback Workflow (`rollback.yml`)
-
-Created dedicated workflow for rolling back releases:
-- Accepts target tag as input
-- Resets release branch to target tag
-- Creates rollback tag for tracking
-- Re-locks branch protection
-- Includes verification step
-
-### 3. Updated Documentation
+### 2. Updated Documentation
 
 **production-release.instructions.md:**
 - Added semantic versioning principles
 - Added quality gates philosophy
 - Enhanced post-deployment verification checklist
-- Added rollback workflow documentation
 - Expanded troubleshooting section
 
 **release.latest.prompt.md:**
@@ -130,20 +120,6 @@ gh workflow run release.yml -f confirm=release -f version_bump=major
 5. Click "Run workflow"
 6. Approve production environment deployment when prompted
 
-### Rolling Back a Release
-
-**Via GitHub CLI:**
-```powershell
-gh workflow run rollback.yml -f tag=v1.0.0 -f confirm=rollback
-```
-
-**Via GitHub UI:**
-1. Go to Actions → Rollback Release
-2. Click "Run workflow"
-3. Enter target tag (e.g., `v1.0.0`)
-4. Type "rollback" to confirm
-5. Click "Run workflow"
-
 ## Testing Recommendations
 
 Since this is a workflow change, testing in a live environment is recommended:
@@ -152,19 +128,13 @@ Since this is a workflow change, testing in a live environment is recommended:
    - Create a test repository with similar structure
    - Test the workflow with different version bump types
    - Verify changelog generation
-   - Test rollback workflow
 
 2. **Verify pre-release validation**
    - Ensure all checks run correctly
    - Verify build artifacts are created
    - Check artifact upload to release
 
-3. **Test rollback workflow**
-   - Create a test release
-   - Roll back to previous version
-   - Verify branch state is correct
-
-4. **Document any issues**
+3. **Document any issues**
    - Note any environment-specific configurations needed
    - Update documentation as needed
 
@@ -208,7 +178,6 @@ ci: update workflows
 ## Files Modified
 
 - `.github/workflows/release.yml` - Revamped release workflow
-- `.github/workflows/rollback.yml` - New rollback workflow
 - `.github/instructions/production-release.instructions.md` - Updated guidelines
 - `.github/prompts/release.latest.prompt.md` - Updated documentation
 
