@@ -20,6 +20,8 @@ import type {
   PlayerLeavePayload,
 } from './messages';
 import { getActions } from './room';
+import * as gameStore from '../stores/game.svelte';
+import * as playerStore from '../stores/player.svelte';
 
 // ============================================================================
 // Types
@@ -153,6 +155,7 @@ export function handlePlayerJoin(
   peerId: string
 ): GameSession | null {
   if (!hostSession) {
+    console.warn('[P2P Host] No session - rejecting player-join');
     sendError(peerId, 'NO_SESSION', 'No active session', 'player-join');
     return null;
   }
@@ -169,6 +172,8 @@ export function handlePlayerJoin(
           : p
       ),
     };
+    // Update local game store for host UI
+    gameStore.setSession(hostSession);
     broadcastSyncState(hostSession);
     return hostSession;
   }
@@ -189,7 +194,10 @@ export function handlePlayerJoin(
     // Add the player
     hostSession = addPlayer(hostSession, payload.player.id, payload.player.name);
     
-    // Broadcast updated state to all
+    // Update local game store for host UI
+    gameStore.setSession(hostSession);
+    
+    // Broadcast updated state to all peers
     broadcastSyncState(hostSession);
     
     return hostSession;
@@ -235,6 +243,12 @@ export function handleCallNumber(
     // Advance turn
     const nextTurnIndex = (hostSession.currentTurnIndex + 1) % hostSession.players.length;
     hostSession = advanceTurn(hostSession);
+    
+    // Sync to game store for host UI update
+    gameStore.setSession(hostSession);
+    
+    // Mark number on host's own card
+    playerStore.markNumber(payload.number);
     
     // Broadcast num-called to all
     const actions = getActions();
@@ -324,6 +338,9 @@ export function handlePlayerLeave(
 
   hostSession = removePlayer(hostSession, payload.playerId);
   
+  // Sync to game store for host UI update
+  gameStore.setSession(hostSession);
+  
   // Check if game should end (not enough players)
   if (hostSession.status === 'playing' && hostSession.players.length < 2) {
     // Last player wins by default
@@ -394,7 +411,10 @@ function validateWinClaim(
  */
 export function broadcastSyncState(session: GameSession): void {
   const actions = getActions();
-  if (!actions) return;
+  if (!actions) {
+    console.warn('[P2P Host] Cannot broadcast sync-state: no actions');
+    return;
+  }
 
   const payload: SyncStatePayload = {
     type: 'sync-state',

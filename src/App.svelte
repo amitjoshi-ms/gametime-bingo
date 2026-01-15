@@ -9,7 +9,7 @@
   import Game from './components/Game.svelte';
   import GameOver from './components/GameOver.svelte';
   
-  import { createRoom, joinRoom, leaveRoom, getActions, onPeerJoin, getConnectedPeers } from '$lib/network/room';
+  import { createRoom, joinRoom, leaveRoom, getActions, onPeerJoin, getConnectedPeers, stopPeerDiscovery } from '$lib/network/room';
   import { setHostSession, registerHostHandlers, broadcastSyncState, getHostSession } from '$lib/network/host';
   import { registerSyncHandlers, sendPlayerJoin, sendCallNumber, clearCallbacks } from '$lib/network/sync';
   import { createSession, addPlayer, startGame as startGameSession, callNumber as callSessionNumber } from '$lib/game/session';
@@ -185,7 +185,7 @@
       
       // Register callback to send player-join when peer connection is established
       // WebRTC connections are asynchronous, so we must wait for the peer connection
-      onPeerJoin((_peerId) => {
+      onPeerJoin((peerId) => {
         // Send player-join message to host once connected
         sendPlayerJoin(playerId, name);
       });
@@ -225,6 +225,9 @@
     if (!session || !isHost) return;
     
     try {
+      // Stop looking for new peers once game starts
+      stopPeerDiscovery();
+      
       // Start the game
       const startedSession = startGameSession(session);
       setHostSession(startedSession);
@@ -280,12 +283,20 @@
       sendCallNumber(playerStore.getPlayerId(), number);
     } else {
       // Host processes directly
-      const session = getHostSession();
+      let session = getHostSession();
       if (session) {
-        const updatedSession = callSessionNumber(session, number);
-        setHostSession(updatedSession);
-        gameStore.callNumber(number);
-        gameStore.advanceTurn();
+        // Add the called number
+        session = callSessionNumber(session, number);
+        
+        // Calculate next turn before advancing
+        const nextTurnIndex = (session.currentTurnIndex + 1) % session.players.length;
+        
+        // Advance turn in session
+        session = { ...session, currentTurnIndex: nextTurnIndex };
+        
+        // Update host session state
+        setHostSession(session);
+        gameStore.setSession(session);
         
         // Mark on local card
         playerStore.markNumber(number);
@@ -293,7 +304,6 @@
         // Broadcast to others
         const actions = getActions();
         if (actions) {
-          const nextTurnIndex = (session.currentTurnIndex + 1) % session.players.length;
           actions.sendNumberCalled({
             type: 'num-called',
             number,

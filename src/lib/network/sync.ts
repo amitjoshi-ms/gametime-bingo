@@ -12,7 +12,7 @@ import type {
   ErrorPayload,
   HostTransferPayload,
 } from './messages';
-import { getActions } from './room';
+import { getActions, stopPeerDiscovery } from './room';
 import * as gameStore from '../stores/game.svelte';
 import * as playerStore from '../stores/player.svelte';
 
@@ -132,6 +132,9 @@ function handleGameOver(payload: GameOverPayload): void {
  * Processes a start-game message.
  */
 function handleStartGame(payload: StartGamePayload): void {
+  // Stop looking for new peers once game starts
+  stopPeerDiscovery();
+  
   // Generate local card
   playerStore.generateNewCard();
 
@@ -166,7 +169,10 @@ function handleHostTransfer(payload: HostTransferPayload): void {
  */
 export function sendPlayerJoin(playerId: string, playerName: string): void {
   const actions = getActions();
-  if (!actions) return;
+  if (!actions) {
+    console.warn('[P2P] Cannot send player-join: no actions available');
+    return;
+  }
 
   actions.sendPlayerJoin({
     type: 'player-join',
@@ -179,7 +185,9 @@ export function sendPlayerJoin(playerId: string, playerName: string): void {
  */
 export function sendCallNumber(playerId: string, number: number): void {
   const actions = getActions();
-  if (!actions) return;
+  if (!actions) {
+    return;
+  }
 
   actions.sendCallNumber({
     type: 'call-number',
