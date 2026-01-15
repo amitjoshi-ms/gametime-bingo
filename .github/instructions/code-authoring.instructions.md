@@ -32,7 +32,7 @@ src/
     ui/         # Reusable UI primitives (Button, Input, Modal)
 ```
 
-**Note**: Create the `components/ui/` directory when building reusable UI components.
+**Note**: The `components/ui/` directory contains reusable UI primitives (e.g., Button, Input, Modal).
 
 ## TypeScript Guidelines
 
@@ -238,7 +238,7 @@ export interface CallNumberPayload {
 
 export interface NumberCalledPayload {
   [key: string]: JsonValue;
-  type: 'number-called';
+  type: 'num-called';  // Matches src/lib/network/messages.ts
   number: number;
   calledBy: string;
   nextTurnIndex: number;
@@ -272,7 +272,7 @@ function handleMessage(raw: MessagePayload): void {
       return;
     }
     processCallNumber(raw);
-  } else if (isNumberCalled(raw)) {
+  } else if (isNumberCalled(raw)) {  // Type guard from network/messages.ts
     processNumberCalled(raw);
   }
   // ... handle other message types
@@ -306,6 +306,8 @@ const isHost = $derived(
   session !== null && localPlayerId !== null && session.hostId === localPlayerId
 );
 
+// Note: This is simplified for illustration. Actual implementation uses
+// internal derived variables prefixed with _ and getter functions.
 // Export functions that access the state
 export function getSession() {
   return session;

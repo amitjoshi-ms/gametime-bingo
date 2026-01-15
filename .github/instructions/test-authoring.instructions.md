@@ -112,7 +112,7 @@ describe('isValidNumber', () => {
     [25, true, 'maximum valid'],
     [26, false, 'above maximum'],
     [NaN, false, 'NaN'],
-  ])('isValidNumber(%s) should return %s (%s)', (input, expected) => {
+  ])('isValidNumber(%s) should return %s (%s)', (input, expected, _description) => {
     expect(isValidNumber(input)).toBe(expected);
   });
 });
