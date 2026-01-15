@@ -93,7 +93,18 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    - Increment `review_cycles`
    - If `review_cycles` > 3: **ASK** user "This is review cycle #N. Continue addressing comments?" If no, stop.
    - Execute **Address Review Comments** workflow → **GOTO step 1**
-5. **REPORT** PR is ready to merge (CI passed, code review clean)
+5. **CHECK** branch is up-to-date:
+   - **GET** PR details and check `mergeable_state`
+   - If `mergeable_state` is `"behind"`:
+     - **UPDATE** branch using `update_pull_request_branch`
+     - **WAIT** 30 seconds for merge to complete
+     - **SYNC** local: `git fetch origin && git pull --rebase origin <branch>`
+     - **GOTO step 1** (CI and review will re-run on updated branch)
+   - If `mergeable_state` is `"dirty"` or `"blocked"`:
+     - **REPORT** merge conflict or blocking issue to user
+     - **STOP** and wait for user guidance
+   - If `mergeable_state` is `"clean"`: Continue to step 6
+6. **REPORT** PR is ready to merge (CI passed, code review clean, branch up-to-date)
 
 ### Sub-workflow: Request Copilot Review
 
