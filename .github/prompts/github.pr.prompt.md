@@ -168,14 +168,19 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
    ```
    - If fails: Fix failing tests before proceeding
 
-4. **RUN** E2E tests:
+4. **RUN** E2E tests (Chromium-only for fast local verification):
    ```bash
-   npm run build && npx playwright test --project=chromium
+   npm run build && playwright test --project=chromium
    ```
+   - This runs only `chromium` project to keep pre-push checks fast; full cross-browser E2E runs in CI
    - If fails: Fix failing E2E tests before proceeding
 
 5. **PERFORM** local code review:
-   - Review staged changes: `git diff --staged` (or `git diff` if not yet staged)
+   - Review the changes that will be pushed:
+     - For unstaged changes: `git diff`
+     - For staged but uncommitted changes: `git diff --staged`
+     - For the most recent commit (after Fix CI/Address Review): `git show HEAD` or `git diff HEAD~1`
+     - For all local commits not yet pushed: `git diff origin/<branch>..HEAD`
    - Check for:
      - Code style and formatting issues
      - Potential bugs or logic errors
@@ -189,7 +194,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 **Quick command to run all checks:**
 ```bash
-npm run lint && npm run check && npm run test && npm run build && npx playwright test --project=chromium
+npm run lint && npm run check && npm run test && npm run build && playwright test --project=chromium
 ```
 
 ## Workflow: Fix CI Failures
@@ -220,7 +225,7 @@ npm run lint && npm run check && npm run test && npm run build && npx playwright
    - `npm run check` for TypeScript type errors
    - `npm run test` for unit test failures
    - `npm run build` for build errors
-   - `npm run build && npx playwright test --project=chromium` for E2E failures
+   - `npm run build && playwright test --project=chromium` for E2E failures
 8. **IF** local check(s) **fail**:
    - Analyze the new error output
    - Go back to step 6 to refine the fix
@@ -229,7 +234,7 @@ npm run lint && npm run check && npm run test && npm run build && npx playwright
    - **STAGE** only the files you modified: `git add <file1> <file2> ...`
    - Review staged changes with `git diff --staged` before committing
    - **COMMIT** fixes: `git commit -m "fix: address CI failures"`
-10. **EXECUTE** **Pre-Push Verification** workflow (full suite: lint, check, test, E2E, local review)
+10. **EXECUTE** **Pre-Push Verification** workflow, **skipping any checks you just ran successfully in step 7-8** (to avoid redundant runs). Always perform local code review (step 5).
 11. **PUSH** changes: `git push`
     - If push fails due to conflicts: `git pull --rebase && git push`
 12. **RETURN** to Monitor workflow to re-check CI
@@ -250,12 +255,15 @@ npm run lint && npm run check && npm run test && npm run build && npx playwright
    c. **EDIT** the local file to address the feedback
    d. **REPLY** to the comment explaining the change made
    e. **RESOLVE** the comment thread (mark as resolved) if the fix is complete
-5. **STAGE** only the files you modified: `git add <file1> <file2> ...`
+5. **RUN** relevant checks locally to verify no regressions:
+   - `npm run lint && npm run check && npm run test`
+   - For UI changes: `npm run build && playwright test --project=chromium`
+6. **STAGE** only the files you modified: `git add <file1> <file2> ...`
    - Alternatively, use `git add -p` for interactive staging
    - Verify with `git diff --staged` that only intended changes are staged
-6. **COMMIT** changes: `git commit -m "fix: address review comments"`
-7. **EXECUTE** **Pre-Push Verification** workflow (full suite: lint, check, test, E2E, local review)
-8. **PUSH** changes: `git push`
+7. **COMMIT** changes: `git commit -m "fix: address review comments"`
+8. **EXECUTE** **Pre-Push Verification** workflow, **skipping any checks you just ran successfully in step 5** (to avoid redundant runs). Always perform local code review.
+9. **PUSH** changes: `git push`
    - If push fails due to conflicts: `git pull --rebase && git push`
 9. **RE-REQUEST** review from Copilot (may auto-trigger on push depending on repo settings) and from human reviewers who requested changes
 10. **RETURN** to Monitor workflow
