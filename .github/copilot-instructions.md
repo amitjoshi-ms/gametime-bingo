@@ -33,5 +33,11 @@ TypeScript 5.x (strict mode): Follow standard conventions
 
 - 001-bingo-game: Added TypeScript 5.x (strict mode) + Svelte 5 (~4KB), Trystero (~7KB) for P2P multiplayer
 
+## Available Resources
+
+- **Instructions**: `.github/instructions/*.instructions.md` — Coding standards (auto-loaded by file type)
+- **Prompts**: `.github/prompts/*.prompt.md` — Workflows (invoke via @workspace)
+- **Agents**: `.github/agents/*.agent.md` — Specialized agents
+
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

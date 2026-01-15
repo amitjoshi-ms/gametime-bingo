@@ -4,6 +4,8 @@
 
 This prompt guides the release of changes from `main` to the `release` branch for Cloudflare Pages deployment.
 
+> **For rollback & troubleshooting**: See `.github/instructions/production-release.instructions.md`
+
 ## How the Release Workflow Works
 
 The release workflow automates deploying code from `main` to production:

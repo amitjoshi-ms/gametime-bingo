@@ -49,16 +49,20 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 1. Run `git branch --show-current` to get branch name
 2. Run `git log main..HEAD --oneline` to see commits
-3. Get the diff: `git diff main...HEAD`
-4. Search codebase for `.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE.md`
-5. **CREATE** a draft PR:
+3. **CHECK** for unpushed commits: `git log origin/<branch>..HEAD --oneline 2>/dev/null || echo "Branch not pushed"`
+   - If unpushed commits exist or branch not pushed:
+     - **EXECUTE** **Pre-Push Verification** workflow (all steps including local code review)
+     - **PUSH** the branch: `git push -u origin <branch>`
+4. Get the diff: `git diff main...HEAD`
+5. Search codebase for `.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE.md`
+6. **CREATE** a draft PR:
    - Title: `type(scope): description` (infer type from changes)
    - Body: Generate from diff + template structure
    - Base: `main` (unless specified otherwise)
-6. **GET** the PR diff using `get_pull_request_diff`
-7. **UPDATE** PR body with detailed description based on actual diff
-8. **REQUEST** Copilot code review using `request_copilot_review`
-9. Report PR number and URL to user
+7. **GET** the PR diff using `get_pull_request_diff`
+8. **UPDATE** PR body with detailed description based on actual diff
+9. **REQUEST** Copilot code review using `request_copilot_review`
+10. Report PR number and URL to user
 
 ## Workflow: Monitor PR Until Ready
 
@@ -130,20 +134,32 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 ## Workflow: Local Code Review
 
-**Execute when remote Copilot review times out (fallback):**
+**Execute when remote Copilot review times out (fallback).**
+
+> **Reference**: Follow the review standards in `.github/instructions/code-review.instructions.md` and `.github/instructions/documentation-review.instructions.md`
 
 1. **GET** PR diff using `get_pull_request_diff`
-2. **ANALYZE** the changes for:
-   - Code style and formatting issues
-   - Potential bugs or logic errors
-   - Missing error handling
-   - Security concerns
-   - Performance issues
-   - Missing tests for new functionality
-3. **IF** issues found:
+2. **GET** changed files using `get_pull_request_files` to identify file types
+3. **FOR CODE CHANGES** (`.ts`, `.svelte`, `.js` files):
+   - **READ** review instructions from `.github/instructions/code-review.instructions.md`
+   - **ANALYZE** against the code review checklist:
+     - Correctness: Logic errors, edge cases, error handling
+     - Standards Compliance: TypeScript strict mode, Svelte 5 runes, testing patterns
+     - Security: Input validation, P2P message validation, no hardcoded secrets
+     - Performance: Unnecessary re-renders, memory leaks, payload sizes
+     - Architecture: Pure game logic, isolated network layer, unidirectional state
+4. **FOR DOCUMENTATION CHANGES** (`.md`, `.mdx` files):
+   - **READ** review instructions from `.github/instructions/documentation-review.instructions.md`
+   - **ANALYZE** against the documentation review checklist:
+     - Accuracy: Technical info correct, code examples work, links valid
+     - Clarity: Purpose clear, headings accurate, steps logical
+     - Completeness: Prerequisites listed, error cases documented
+     - Structure: Heading hierarchy correct, code blocks have language
+     - Style: Active voice, concise sentences, correct spelling/grammar
+5. **IF** issues found:
    - List issues and ask user: "Found these issues during local review. Fix them?"
    - If yes: Execute **Address Review Comments** workflow with local findings
-4. **IF** no issues found:
+6. **IF** no issues found:
    - Report: "Local code review passed. No issues found."
 
 ## Workflow: Pre-Push Verification
@@ -181,13 +197,23 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
      - For staged but uncommitted changes: `git diff --staged`
      - For the most recent commit (after Fix CI/Address Review): `git show HEAD` or `git diff HEAD~1`
      - For all local commits not yet pushed: `git diff origin/<branch>..HEAD`
-   - Check for:
-     - Code style and formatting issues
-     - Potential bugs or logic errors
-     - Missing error handling
-     - Security concerns (hardcoded secrets, injection vulnerabilities)
-     - Performance issues
-     - Missing tests for new functionality
+   - **IDENTIFY** changed file types: `git diff --name-only origin/<branch>..HEAD`
+   - **FOR CODE CHANGES** (`.ts`, `.svelte`, `.js` files):
+     - **READ** review instructions from `.github/instructions/code-review.instructions.md`
+     - **APPLY** the review checklist:
+       - Correctness: Logic errors, edge cases, error handling
+       - Standards Compliance: TypeScript strict mode, Svelte 5 runes, testing patterns
+       - Security: Input validation, P2P message validation, no hardcoded secrets
+       - Performance: Unnecessary re-renders, memory leaks, payload sizes
+       - Architecture: Pure game logic, isolated network layer, unidirectional state
+   - **FOR DOCUMENTATION CHANGES** (`.md`, `.mdx` files):
+     - **READ** review instructions from `.github/instructions/documentation-review.instructions.md`
+     - **APPLY** the review checklist:
+       - Accuracy: Technical info correct, code examples work, links valid
+       - Clarity: Purpose clear, headings accurate, steps logical
+       - Completeness: Prerequisites listed, error cases documented
+       - Structure: Heading hierarchy correct, code blocks have language
+       - Style: Active voice, concise sentences, correct spelling/grammar
    - If issues found: Fix them before proceeding
 
 6. **ALL CHECKS PASSED**: Proceed with `git push`
