@@ -7,194 +7,162 @@ applyTo: '.github/workflows/*.yml, .github/prompts/release*.md'
 
 Guidelines for safely releasing changes to production.
 
+> **Modularity**: This file defines release *standards and procedures*.
+> - For step-by-step execution: `.github/prompts/release.latest.prompt.md`
+> - For workflow implementation: `.github/workflows/release.yml`
+
 ## Release Philosophy
 
 - **Ship small**: Frequent small releases are safer than big bang releases
 - **Automate everything**: Manual steps are error-prone
 - **Verify before merge**: All changes must pass CI and code review
 - **Quick rollback**: Always have a way to revert quickly
+- **Fast-forward only**: Release branch is always an exact subset of main
 
 ## Branch Strategy
 
 ```
-main        ─────●─────●─────●─────●─────►  (protected, squash only)
+main        ─────●─────●─────●─────●─────►  (protected, squash merges from PRs)
                  │     │     │     │
-release     ─────●─────●─────●─────●─────►  (production, fast-forward only)
-                 │     │     │     │
+release     ─────●─────●─────●─────●─────►  (locked, fast-forward only from main)
+                 │     │     │     │        (triggers Cloudflare production deploy)
 feature/x   ─────●     │     │     │
-feature/y   ───────────●     │     │
-fix/z       ─────────────────●     │
 ```
 
-## Release Process
+**Why fast-forward only?** Ensures `release` is always an exact subset of `main` — no merge commits, no divergence, full traceability.
 
-### Prerequisites
+## Version Numbering
 
-- [ ] All CI checks pass on `main`
+Format: `yy.mdd.rev`
+
+| Part | Description | Example |
+|------|-------------|---------|
+| `yy` | Two-digit year | `26` for 2026 |
+| `m` | Month (1-12, no leading zero) | `1` for January |
+| `dd` | Day (01-31, always zero-padded) | `14` |
+| `rev` | Revision number (starts at 0) | `0`, `1`, `2`... |
+
+Examples:
+- `26.114.0` — January 14, 2026, first release
+- `26.114.1` — January 14, 2026, second release
+- `26.1104.0` — November 4, 2026, first release
+
+**Parsing**: Day is always 2 digits. Read from right: last 2 chars = day, remaining = month.
+
+## Release Prerequisites
+
+Before triggering a release:
+
+- [ ] All CI checks pass on `main` (lint, type check, unit tests, E2E)
 - [ ] Code review approved (Copilot + human if required)
 - [ ] No unresolved review comments
-- [ ] Branch is up to date with `main`
+- [ ] `main` branch is up to date
+- [ ] No `console.log` debugging statements
+- [ ] No hardcoded development URLs
 
-### Automated Release Workflow
+## Automated Release Workflow
 
-The release workflow (`.github/workflows/release.yml`) handles:
+The workflow (`.github/workflows/release.yml`) executes:
 
-1. **Unlock** release branch (temporarily remove protection)
-2. **Fast-forward merge** from `main` to `release`
-3. **Create tag** with format `YY.MDD.REV` (e.g., `26.0114.1`)
-4. **Re-lock** release branch
-5. **Cleanup** on failure (re-lock branch if error occurs)
+1. **Environment approval** — Waits for authorized reviewer (web UI required)
+2. **Unlock** — Removes branch protection from `release`
+3. **Fast-forward merge** — `git merge --ff-only origin/main`
+4. **Create tag** — Format `yy.mdd.rev`, auto-increments revision
+5. **Re-lock** — Applies branch protection with `lock_branch=true`
+6. **Cleanup on failure** — Re-locks branch if any step fails
 
-### Manual Release Steps
-
-If automation fails, follow these steps:
-
-```bash
-# 1. Ensure main is up to date
-git checkout main
-git pull
-
-# 2. Verify CI passes
-gh run list --branch main --limit 1
-
-# 3. Check out release branch
-git checkout release
-git pull
-
-# 4. Fast-forward merge
-git merge --ff-only origin/main
-
-# 5. Create tag
-TAG="$(date +%y.%m%d).1"
-git tag -a "$TAG" -m "Release $TAG"
-
-# 6. Push release and tag
-git push origin release
-git push origin "$TAG"
+Trigger via:
+```powershell
+gh workflow run release.yml -f confirm=release
 ```
+
+See `.github/prompts/release.latest.prompt.md` for detailed execution options.
 
 ## Deployment
 
 ### Cloudflare Pages
 
-- **Preview**: Automatic on every PR
-- **Production**: Automatic when `release` branch is updated
-- **Rollback**: Redeploy previous commit via Cloudflare dashboard
+| Environment | Trigger | URL |
+|-------------|---------|-----|
+| Preview | PR opened/updated | `https://<hash>.gametime-bingo.pages.dev` |
+| Production | `release` branch updated | Production domain |
 
-### Deployment Verification
+### Post-Deployment Verification
 
-After deployment:
+After deployment completes:
 
-1. Check Cloudflare Pages deployment status
-2. Verify production site loads correctly
-3. Test critical user flows:
-   - [ ] Home page loads
-   - [ ] Create game works
-   - [ ] Join game works
-   - [ ] P2P connection establishes
+- [ ] Production site loads correctly
+- [ ] No errors in browser console
+- [ ] Critical flows work:
+  - [ ] Home page loads
+  - [ ] Create game works
+  - [ ] Join game works
+  - [ ] P2P connection establishes
 
-## Version Numbering
+## Rollback Procedures
 
-Format: `YY.MDD.REV`
+### Quick Rollback (Cloudflare Dashboard)
 
-- `YY`: Two-digit year (e.g., `26` for 2026)
-- `M`: Month without leading zero (e.g., `1` for January)
-- `DD`: Two-digit day (e.g., `14`)
-- `REV`: Revision number for same day (starts at `1`)
-
-Examples:
-- First release on Jan 14, 2026: `26.0114.1`
-- Second release same day: `26.0114.2`
-- Release on Feb 3, 2026: `26.0203.1`
-
-## Rollback Procedure
-
-### Quick Rollback (Cloudflare)
+For immediate rollback without code changes:
 
 1. Go to Cloudflare Pages dashboard
 2. Select gametime-bingo project
 3. Find previous successful deployment
 4. Click "Retry deployment"
 
-### Git Rollback
+### Git Rollback (Code-Level Fix)
 
-```bash
+When you need to revert code:
+
+```powershell
 # 1. Identify last good commit
 git log --oneline release
 
-# 2. Create revert branch
+# 2. Create revert branch from main
 git checkout -b revert/bad-release main
 
 # 3. Revert the problematic commit(s)
 git revert <commit-hash>
 
-# 4. Create PR and merge via normal process
+# 4. Create PR and merge via normal process, then trigger release
 ```
 
 ## Hotfix Process
 
 For urgent production fixes:
 
-1. **Create hotfix branch** from `main`
-   ```bash
+1. **Create hotfix branch** from `main`:
+   ```powershell
    git checkout -b hotfix/critical-bug main
    ```
 
-2. **Make minimal fix** - only fix the issue, no other changes
+2. **Make minimal fix** — Only fix the issue, no other changes
 
-3. **Test locally** - verify fix works
+3. **Test locally** — Verify fix works
 
-4. **Fast-track review** - request expedited review
+4. **Fast-track review** — Request expedited review, note urgency in PR
 
-5. **Merge and release** - follow normal release process
+5. **Merge and release** — Follow normal PR workflow, then trigger release
 
-## Release Checklist
+## Troubleshooting
 
-Before releasing:
+### Fast-Forward Merge Failed
 
-- [ ] CI pipeline passes (lint, type check, unit tests, E2E)
-- [ ] Code review approved
-- [ ] No `console.log` debugging statements
-- [ ] No hardcoded development URLs
-- [ ] Bundle size is acceptable
-- [ ] No new security vulnerabilities
+If the release workflow fails with "Fast-forward merge failed":
 
-After releasing:
+```powershell
+# This means release has diverged from main (shouldn't happen normally)
+# WARNING: This discards any release-only commits
+git checkout release
+git reset --hard origin/main
+git push --force origin release
+```
 
-- [ ] Production deployment successful
-- [ ] Site loads correctly
-- [ ] Critical flows work
-- [ ] No errors in browser console
-- [ ] Monitoring shows no issues
+### Branch Protection API Errors
 
-## Environment Configuration
+If unlock/lock fails:
 
-### Development
-- URL: `http://localhost:5173`
-- P2P: Uses Trystero default STUN/TURN
-
-### Preview (PR)
-- URL: `https://<hash>.gametime-bingo.pages.dev`
-- P2P: Uses Trystero default STUN/TURN
-
-### Production
-- URL: Production domain
-- P2P: Uses Trystero default STUN/TURN
-
-## Monitoring
-
-### What to Watch
-
-- Cloudflare Pages deployment status
-- Browser console errors (via real user monitoring if available)
-- P2P connection success rates
-
-### Alert Response
-
-If issues are detected:
-
-1. Assess severity (blocking vs non-blocking)
-2. If blocking: Initiate rollback
-3. Create issue to track
-4. Investigate root cause
-5. Create fix and follow hotfix process
+1. Check GitHub token permissions (needs `repo` scope)
+2. Manually unlock via GitHub Settings → Branches → release → Edit
+3. Complete release manually (see prompt for steps)
+4. Manually re-lock the branch
