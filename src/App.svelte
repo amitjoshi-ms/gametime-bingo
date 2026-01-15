@@ -9,7 +9,7 @@
   import Game from './components/Game.svelte';
   import GameOver from './components/GameOver.svelte';
   
-  import { createRoom, joinRoom, leaveRoom, getActions } from '$lib/network/room';
+  import { createRoom, joinRoom, leaveRoom, getActions, onPeerJoin, getConnectedPeers } from '$lib/network/room';
   import { setHostSession, registerHostHandlers, broadcastSyncState, getHostSession } from '$lib/network/host';
   import { registerSyncHandlers, sendPlayerJoin, sendCallNumber, clearCallbacks } from '$lib/network/sync';
   import { createSession, addPlayer, startGame as startGameSession, callNumber as callSessionNumber } from '$lib/game/session';
@@ -76,8 +76,16 @@
       // Set local player ID
       gameStore.setLocalPlayerId(savedState.playerId);
       
-      // Send player-join to request sync state
-      sendPlayerJoin(savedState.playerId, savedState.playerName);
+      // Register callback to send player-join when peer connection is established
+      onPeerJoin((_peerId) => {
+        sendPlayerJoin(savedState.playerId, savedState.playerName);
+      });
+      
+      // Check if already connected
+      const connectedPeers = getConnectedPeers();
+      if (connectedPeers.length > 0) {
+        sendPlayerJoin(savedState.playerId, savedState.playerName);
+      }
       
       // Recover card if we have the seed
       if (savedState.cardSeed) {
@@ -175,8 +183,18 @@
       // Set local player ID for store
       gameStore.setLocalPlayerId(playerId);
       
-      // Send player-join message to host
-      sendPlayerJoin(playerId, name);
+      // Register callback to send player-join when peer connection is established
+      // WebRTC connections are asynchronous, so we must wait for the peer connection
+      onPeerJoin((_peerId) => {
+        // Send player-join message to host once connected
+        sendPlayerJoin(playerId, name);
+      });
+      
+      // Check if already connected (unlikely but possible if connection was fast)
+      const connectedPeers = getConnectedPeers();
+      if (connectedPeers.length > 0) {
+        sendPlayerJoin(playerId, name);
+      }
       
       // Update URL without reload
       const newUrl = new URL(window.location.href);
