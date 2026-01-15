@@ -116,6 +116,7 @@ function clamp(value: number, min: number, max: number): number {
   });
   
   // ❌ Bad: Using $effect for computations (use $derived instead)
+  let count = $state(1);  // Declare count for example
   let doubled = $state(0);
   $effect(() => {
     doubled = count * 2; // Should use $derived
@@ -192,26 +193,37 @@ function markNumber(card: BingoCard, calledNumber: number): void {
 - Use explicit error messages for user feedback
 
 ```typescript
-// ✅ Good: Return error string or null
-function validatePlayerName(name: string): string | null {
+// ✅ Good: Boolean validation (matches src/lib/game/validation.ts)
+function isValidPlayerName(name: string): boolean {
   const trimmed = name.trim();
-  if (trimmed.length < 1) {
-    return 'Name cannot be empty';
+  return trimmed.length >= 1 && trimmed.length <= MAX_NAME_LENGTH;
+}
+
+// ✅ Good: Error getter with context (matches getJoinError pattern)
+function getJoinError(session: GameSession, playerName: string): string | null {
+  if (session.status !== 'lobby') {
+    return 'Game has already started';
   }
-  if (trimmed.length > 20) {
-    return 'Name must be 20 characters or less';
+  if (!isValidPlayerName(playerName)) {
+    return `Name must be 1-${MAX_NAME_LENGTH} characters`;
   }
   return null; // Valid
 }
 
-// ✅ Good: Boolean validation with separate error getter
+// ✅ Good: Boolean validation (matches src/lib/game/validation.ts)
 function isValidNumber(num: number): boolean {
-  return Number.isInteger(num) && num >= 1 && num <= 25;
+  return Number.isInteger(num) && num >= 1 && num <= TOTAL_NUMBERS;
 }
 
-function getNumberError(num: number): string | null {
-  if (!Number.isInteger(num)) return 'Number must be an integer';
-  if (num < 1 || num > 25) return 'Number must be between 1 and 25';
+// ✅ Good: Error getter with game context (matches getCallNumberError)
+function getCallNumberError(
+  session: GameSession,
+  playerId: string,
+  num: number
+): string | null {
+  if (session.status !== 'playing') return 'Game is not in progress';
+  if (!isValidNumber(num)) return 'Invalid number (must be 1-25)';
+  if (session.calledNumbers.includes(num)) return 'Number already called';
   return null;
 }
 ```
