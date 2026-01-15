@@ -170,6 +170,70 @@ try {
 4. **Leave comments**: Be specific and constructive
 5. **Approve or request changes**: Make a clear decision
 
+## Issue-to-PR Workflow
+
+**CRITICAL**: Never close an issue directly. Always use a PR to close issues.
+
+### Correct Workflow
+
+1. **Create a branch** for the fix:
+   ```bash
+   git checkout -b fix/issue-description-<issue_number>
+   # Example: git checkout -b fix/multiplayer-connection-98
+   ```
+
+2. **Make and test changes locally**
+
+3. **Commit with issue reference**:
+   ```bash
+   git commit -m "fix: description of the fix
+
+   Fixes #<issue_number>"
+   ```
+
+4. **Push and create PR**:
+   ```bash
+   git push -u origin <branch_name>
+   ```
+   Then create a PR that:
+   - References the issue in the body (e.g., "Fixes #98")
+   - Describes the root cause and solution
+   - Lists files changed
+
+5. **Issue closes automatically** when PR is merged
+
+### Common Mistakes
+
+```
+❌ Bad: Closing issue directly after making local changes
+   - Changes aren't reviewed
+   - No audit trail
+   - Can't revert easily
+
+❌ Bad: Committing directly to main
+   - Bypasses code review
+   - No PR discussion
+   - CI may not run
+
+✅ Good: Branch → Commit → Push → PR → Review → Merge
+   - Changes are reviewed
+   - Issue linked to PR
+   - Auto-closes on merge
+   - Full audit trail
+```
+
+### PR Title Convention
+
+Use conventional commit format:
+- `fix:` for bug fixes (closes issues)
+- `feat:` for new features
+- `docs:` for documentation
+- `refactor:` for code changes that don't fix bugs or add features
+- `test:` for adding tests
+- `chore:` for maintenance tasks
+
+Example: `fix: multiplayer connection and state sync issues`
+
 ## Automated Checks
 
 Before manual review, ensure these pass:
