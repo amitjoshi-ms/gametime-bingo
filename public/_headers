@@ -8,14 +8,15 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
   # Content-Security-Policy breakdown:
   # - default-src 'self': Only allow resources from same origin by default
-  # - script-src 'self': Only scripts from same origin (no inline/eval)
+  # - script-src 'self': Only scripts from same origin
   # - style-src 'self' 'unsafe-inline': Svelte component styles require unsafe-inline
   # - img-src 'self' data: blob:: Allow data URIs for inline images and blobs
   # - font-src 'self': Fonts from same origin only
   # - connect-src 'self' wss: https:: Trystero P2P uses Nostr relays (wss://) and HTTPS for signaling
+  #   NOTE: Broad wildcards required because Nostr relays are user-configurable and may vary
   # - worker-src 'self' blob:: Trystero may use blob workers for P2P connections
   # - manifest-src 'self': PWA manifest from same origin
   # - base-uri 'self': Prevent base tag injection attacks
