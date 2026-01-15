@@ -15,11 +15,12 @@ Standards and best practices for writing tests in the gametime-bingo project.
 ```text
 tests/
   unit/           # Vitest unit tests
-    game/         # Game logic tests
-    utils/        # Utility function tests
-  component/      # (future) Svelte component tests
-  e2e/            # Playwright E2E tests
+    game/         # Game logic tests (card.test.ts, session.test.ts, etc.)
+    utils/        # Utility function tests (random.test.ts, storage.test.ts)
+  e2e/            # Playwright E2E tests (home.spec.ts, multiplayer.spec.ts)
 ```
+
+**Note**: Create `tests/component/` directory when adding Svelte component tests.
 
 ## Unit Testing with Vitest
 
@@ -315,10 +316,26 @@ Before submitting tests:
 ## Commands
 
 ```bash
-npm test                     # Run unit tests
-npm run test:watch           # Run unit tests in watch mode
-npm test -- --coverage       # Run with coverage report (requires vitest config)
-npm run test:e2e             # Run E2E tests (headless)
-npm run test:e2e -- --headed # Run E2E tests (visible browser)
-npm run test:e2e -- --debug  # Run E2E tests with debugger
+npm test                        # Run unit tests
+npm run test:watch              # Run unit tests in watch mode
+npm test -- --coverage          # Run with coverage report
+npm run test:e2e                # Run E2E tests (headless)
+npm run test:e2e -- --headed    # Run E2E tests (visible browser)
+npm run test:e2e -- --debug     # Run E2E tests with debugger
+npx playwright test --project=chromium  # Run E2E in specific browser
+```
+
+**Run Specific Tests**:
+```bash
+# Run single unit test file
+npm test tests/unit/game/card.test.ts
+
+# Run tests matching a pattern
+npm test -- --grep "should generate"
+
+# Run single E2E test file
+npx playwright test tests/e2e/home.spec.ts
+
+# Run E2E test in headed mode for debugging
+npx playwright test tests/e2e/home.spec.ts --headed
 ```

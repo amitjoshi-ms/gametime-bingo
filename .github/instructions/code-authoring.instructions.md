@@ -32,6 +32,8 @@ src/
     ui/         # Reusable UI primitives (Button, Input, Modal)
 ```
 
+**Note**: Create the `components/ui/` directory when building reusable UI components.
+
 ## TypeScript Guidelines
 
 ### Strict Mode Requirements
@@ -94,6 +96,12 @@ function clamp(value: number, min: number, max: number): number {
 </script>
 ```
 
+**Key Concepts**:
+- `$state()`: Creates reactive state (replaces `let` variables with reactivity)
+- `$derived()`: Creates computed values (replaces `$:` reactive declarations)
+- `$effect()`: Runs side effects when dependencies change (replaces `$:` statements with side effects)
+- `$props()`: Receives component props (see Component Props section)
+
 ### Component Props
 
 ```svelte
@@ -108,6 +116,12 @@ function clamp(value: number, min: number, max: number): number {
   let { value, label = 'Default', onchange }: Props = $props();
 </script>
 ```
+
+**Best Practices**:
+- Always define a `Props` interface for type safety
+- Use optional properties with `?` for optional props
+- Provide default values in the destructuring
+- Use `$props()` rune for all props (Svelte 5 pattern)
 
 ### Event Handling
 
@@ -215,8 +229,29 @@ function isNumberCalledMessage(msg: GameMessage): msg is { type: 'number-called'
 ### Client-Side State
 
 - All state lives in the browser (no server)
-- Use Svelte stores for shared state across components
+- Use Svelte stores (`*.svelte.ts` files) for shared state across components
 - Persist critical state to localStorage for recovery
+
+```typescript
+// ✅ Good: Svelte 5 store with runes (src/lib/stores/game.svelte.ts)
+let session = $state<GameSession | null>(null);
+let localPlayerId = $state<string | null>(null);
+
+// Derived state
+const isInGame = $derived(session !== null);
+const isHost = $derived(
+  session !== null && localPlayerId !== null && session.hostId === localPlayerId
+);
+
+// Export functions that access the state
+export function getSession() {
+  return session;
+}
+
+export function setSession(newSession: GameSession | null) {
+  session = newSession;
+}
+```
 
 ```typescript
 // ✅ Good: State recovery on page refresh
@@ -254,6 +289,7 @@ Before committing code:
 - [ ] TypeScript compiles without errors (`npm run check`)
 - [ ] ESLint passes (`npm run lint`)
 - [ ] Unit tests pass (`npm test`)
+- [ ] E2E tests pass if UI changes made (`npm run test:e2e`)
 - [ ] No `any` types (use `unknown` if needed)
 - [ ] Functions have explicit return types
 - [ ] Components use Svelte 5 runes
@@ -266,7 +302,7 @@ Before committing code:
 npm run dev       # Start development server
 npm run build     # Build for production
 npm run check     # TypeScript type checking
-npm run lint      # ESLint
+npm run lint      # Run ESLint
 npm test          # Run unit tests
-npm run test:e2e  # Run E2E tests
+npm run test:e2e  # Run E2E tests (headless)
 ```

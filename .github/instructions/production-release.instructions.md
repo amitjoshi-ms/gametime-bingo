@@ -46,7 +46,7 @@ For immediate rollback without GitHub Actions:
 
 When you need to revert code:
 
-```powershell
+```bash
 # 1. Identify last good commit
 git log --oneline release
 
@@ -64,7 +64,7 @@ git revert <commit-hash>
 For urgent production fixes:
 
 1. **Create hotfix branch** from `main`:
-   ```powershell
+   ```bash
    git checkout -b hotfix/critical-bug main
    ```
 
@@ -80,7 +80,7 @@ For urgent production fixes:
 
 ### Fast-Forward Merge Failed
 
-```powershell
+```bash
 # WARNING: This discards any release-only commits
 git checkout release
 git reset --hard origin/main
