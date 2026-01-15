@@ -11,7 +11,7 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   # Content-Security-Policy breakdown:
   # - default-src 'self': Only allow resources from same origin by default
-  # - script-src 'self': Only scripts from same origin
+  # - script-src 'self' 'unsafe-inline': Vite injects inline scripts for module loading in production
   # - style-src 'self' 'unsafe-inline': Svelte component styles require unsafe-inline
   # - img-src 'self' data: blob:: Allow data URIs for inline images and blobs
   # - font-src 'self': Fonts from same origin only
@@ -23,7 +23,7 @@
   # - form-action 'self': Restrict form submissions to same origin
   # - frame-ancestors 'none': Prevent embedding (defense in depth with X-Frame-Options)
   # - object-src 'none': Prevent plugins/embeds
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss: https:; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss: https:; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
 
 # Cache-Control for static assets (Vite hashed files in /assets/)
 /assets/*
