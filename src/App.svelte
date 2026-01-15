@@ -56,6 +56,28 @@
     };
   });
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
+
+  /**
+   * Sends player-join message once a peer connection is established.
+   * WebRTC connections are asynchronous, so we register a callback for when
+   * a peer joins and also check if already connected.
+   */
+  function sendPlayerJoinWhenConnected(playerId: string, playerName: string): void {
+    // Register callback to send player-join when peer connection is established
+    onPeerJoin((_peerId) => {
+      sendPlayerJoin(playerId, playerName);
+    });
+    
+    // Check if already connected (unlikely but possible if connection was fast)
+    const connectedPeers = getConnectedPeers();
+    if (connectedPeers.length > 0) {
+      sendPlayerJoin(playerId, playerName);
+    }
+  }
+
   /**
    * Attempts to rejoin a previous session.
    */
@@ -76,16 +98,8 @@
       // Set local player ID
       gameStore.setLocalPlayerId(savedState.playerId);
       
-      // Register callback to send player-join when peer connection is established
-      onPeerJoin((_peerId) => {
-        sendPlayerJoin(savedState.playerId, savedState.playerName);
-      });
-      
-      // Check if already connected
-      const connectedPeers = getConnectedPeers();
-      if (connectedPeers.length > 0) {
-        sendPlayerJoin(savedState.playerId, savedState.playerName);
-      }
+      // Send player-join when connected to host
+      sendPlayerJoinWhenConnected(savedState.playerId, savedState.playerName);
       
       // Recover card if we have the seed
       if (savedState.cardSeed) {
@@ -183,18 +197,8 @@
       // Set local player ID for store
       gameStore.setLocalPlayerId(playerId);
       
-      // Register callback to send player-join when peer connection is established
-      // WebRTC connections are asynchronous, so we must wait for the peer connection
-      onPeerJoin((_peerId) => {
-        // Send player-join message to host once connected
-        sendPlayerJoin(playerId, name);
-      });
-      
-      // Check if already connected (unlikely but possible if connection was fast)
-      const connectedPeers = getConnectedPeers();
-      if (connectedPeers.length > 0) {
-        sendPlayerJoin(playerId, name);
-      }
+      // Send player-join when connected to host
+      sendPlayerJoinWhenConnected(playerId, name);
       
       // Update URL without reload
       const newUrl = new URL(window.location.href);

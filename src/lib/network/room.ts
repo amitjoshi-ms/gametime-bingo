@@ -200,16 +200,18 @@ export function isInRoom(): boolean {
 }
 
 /**
- * Stops tracker reconnection attempts.
- * Call this when the game starts to stop reconnecting to trackers to discover new peers.
+ * Stops Trystero relay/tracker reconnection attempts for peer discovery.
+ * Call this when the game starts to stop reconnecting to relay/tracker servers.
+ * Note: Trystero uses "relay" terminology internally for all strategies (Nostr, torrent, etc).
  */
 export function stopPeerDiscovery(): void {
   pauseRelayReconnection();
 }
 
 /**
- * Resumes tracker reconnection attempts.
+ * Resumes Trystero relay/tracker reconnection attempts for peer discovery.
  * Call this when returning to lobby or creating a new game.
+ * Note: Trystero uses "relay" terminology internally for all strategies (Nostr, torrent, etc).
  */
 export function resumePeerDiscovery(): void {
   resumeRelayReconnection();
