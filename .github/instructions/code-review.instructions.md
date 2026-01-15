@@ -7,6 +7,12 @@ applyTo: '**'
 
 Guidelines for conducting thorough and constructive code reviews.
 
+> **Modularity**: This file defines *how* to review. For *what* standards to check,
+> reference the authoring instructions:
+> - Code: `.github/instructions/code-authoring.instructions.md`
+> - Tests: `.github/instructions/test-authoring.instructions.md`
+> - Docs: `.github/instructions/documentation-authoring.instructions.md`
+
 ## Review Philosophy
 
 - **Be constructive**: Focus on improving the code, not criticizing the author
@@ -23,56 +29,35 @@ Guidelines for conducting thorough and constructive code reviews.
 - [ ] Are error conditions handled gracefully?
 - [ ] Is the logic correct?
 
-### TypeScript Quality
+### Standards Compliance
 
-- [ ] No `any` types (use `unknown` if truly unknown)
-- [ ] Explicit return types on functions
-- [ ] Proper use of interfaces vs types
-- [ ] No TypeScript errors or warnings
-- [ ] Strict mode compliance
+Verify code follows the authoring standards (see linked instructions above):
 
-### Svelte 5 Patterns
-
-- [ ] Uses runes (`$state`, `$derived`, `$effect`) correctly
-- [ ] No legacy reactive declarations (`$:`)
-- [ ] Props are typed with interfaces
-- [ ] Events use proper handlers (`onclick`, `oninput`)
-- [ ] Components are appropriately sized
-
-### Code Quality
-
-- [ ] Functions are pure where possible
-- [ ] No unnecessary side effects
-- [ ] DRY (Don't Repeat Yourself)
-- [ ] Single responsibility principle
-- [ ] Meaningful variable and function names
-
-### Testing
-
-- [ ] New code has tests
-- [ ] Tests cover happy path and error cases
-- [ ] Tests are deterministic
-- [ ] Test names describe behavior
+- [ ] **TypeScript**: Strict mode, no `any`, explicit types (see code-authoring)
+- [ ] **Svelte 5**: Uses runes correctly, no legacy `$:` (see code-authoring)
+- [ ] **Testing**: Follows Vitest/Playwright patterns (see test-authoring)
+- [ ] **Documentation**: JSDoc and markdown standards (see documentation-authoring)
 
 ### Security
 
 - [ ] No hardcoded secrets or credentials
-- [ ] User input is validated
+- [ ] User input is validated at boundaries
 - [ ] No injection vulnerabilities
-- [ ] P2P messages are validated
+- [ ] P2P messages are validated with explicit types
 
 ### Performance
 
-- [ ] No unnecessary re-renders
-- [ ] Large computations are memoized
+- [ ] No unnecessary re-renders in Svelte components
+- [ ] Large computations use `$derived` not `$effect`
 - [ ] No memory leaks (cleanup in `$effect`)
-- [ ] Network payloads are minimal
+- [ ] P2P message payloads are minimal
 
-### Documentation
+### Architecture
 
-- [ ] Complex logic is commented
-- [ ] Public APIs have JSDoc comments
-- [ ] README updated if needed
+- [ ] Game logic is pure (in `lib/game/`)
+- [ ] Network layer is isolated (in `lib/network/`)
+- [ ] Components are appropriately sized
+- [ ] State flows unidirectionally
 
 ## Comment Types
 

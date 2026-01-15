@@ -192,6 +192,62 @@ test('should handle network errors gracefully', async ({ page }) => {
 });
 ```
 
+### P2P Testing Strategies
+
+P2P tests require special handling since there's no central server:
+
+```typescript
+// ✅ Good: Test P2P message validation in isolation
+describe('P2P message validation', () => {
+  it('should reject messages with missing type', () => {
+    const result = validateGameMessage({ number: 42 });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept valid number-called messages', () => {
+    const result = validateGameMessage({ type: 'number-called', number: 42 });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ✅ Good: Mock Trystero for unit tests
+vi.mock('trystero', () => ({
+  joinRoom: vi.fn(() => ({
+    makeAction: vi.fn(() => [vi.fn(), vi.fn()]),
+    leave: vi.fn(),
+    getPeers: vi.fn(() => ({})),
+  })),
+}));
+```
+
+### Multi-Player E2E Tests
+
+```typescript
+// ✅ Good: Use two browser contexts for P2P E2E tests
+test('two players can join same room', async ({ browser }) => {
+  const host = await browser.newContext();
+  const guest = await browser.newContext();
+  
+  const hostPage = await host.newPage();
+  const guestPage = await guest.newPage();
+  
+  // Host creates game
+  await hostPage.goto('/');
+  await hostPage.getByRole('button', { name: /create/i }).click();
+  const roomUrl = hostPage.url();
+  
+  // Guest joins via URL
+  await guestPage.goto(roomUrl);
+  
+  // Both see each other
+  await expect(hostPage.getByText(/2 players/i)).toBeVisible();
+  await expect(guestPage.getByText(/2 players/i)).toBeVisible();
+  
+  await host.close();
+  await guest.close();
+});
+```
+
 ## Test Quality Guidelines
 
 ### What to Test
@@ -201,12 +257,14 @@ test('should handle network errors gracefully', async ({ page }) => {
    - Validation functions
    - Utility functions
    - State transformations
+   - P2P message validation
 
 2. **E2E Tests** (slow, integrated):
    - Critical user flows (create game, join game, play bingo)
    - Cross-browser compatibility
    - Accessibility
    - Error states and recovery
+   - Multi-player scenarios (using multiple browser contexts)
 
 ### Test Naming
 

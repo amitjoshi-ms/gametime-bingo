@@ -7,6 +7,9 @@ applyTo: '**/*.md, **/*.mdx'
 
 Guidelines for reviewing documentation changes.
 
+> **Modularity**: This file defines *how* to review docs. For *what* standards to check,
+> reference: `.github/instructions/documentation-authoring.instructions.md`
+
 ## Review Philosophy
 
 - **Accuracy first**: Information must be correct

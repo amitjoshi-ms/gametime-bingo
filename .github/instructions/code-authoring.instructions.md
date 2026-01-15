@@ -181,6 +181,63 @@ type GameMessage =
 - Implement reconnection logic
 - Show connection status to users
 
+### P2P Security
+
+```typescript
+// ✅ Good: Validate incoming P2P messages
+function handleMessage(raw: unknown): void {
+  const result = validateGameMessage(raw);
+  if (!result.success) {
+    console.warn('Invalid message received:', result.error);
+    return;
+  }
+  // Process validated message
+  processMessage(result.value);
+}
+
+// ✅ Good: Type guard for message validation
+function isNumberCalledMessage(msg: GameMessage): msg is { type: 'number-called'; number: number } {
+  return msg.type === 'number-called';
+}
+```
+
+## SPA Architecture Guidelines
+
+### Client-Side State
+
+- All state lives in the browser (no server)
+- Use Svelte stores for shared state across components
+- Persist critical state to localStorage for recovery
+
+```typescript
+// ✅ Good: State recovery on page refresh
+$effect(() => {
+  if (gameState) {
+    localStorage.setItem('gameState', JSON.stringify(gameState));
+  }
+});
+
+// On mount, restore state
+const saved = localStorage.getItem('gameState');
+if (saved) {
+  gameState = JSON.parse(saved);
+}
+```
+
+### URL-Based Room Sharing
+
+```typescript
+// ✅ Good: Room ID in URL for easy sharing
+const roomId = window.location.hash.slice(1) || generateRoomId();
+window.location.hash = roomId;
+```
+
+### Offline Considerations
+
+- Game should handle temporary disconnections
+- Show clear connection status to users
+- Queue actions during brief disconnections
+
 ## Code Quality Checklist
 
 Before committing code:
