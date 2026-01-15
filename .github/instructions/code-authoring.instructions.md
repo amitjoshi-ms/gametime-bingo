@@ -7,6 +7,9 @@ applyTo: '**/*.ts, **/*.svelte, **/*.js'
 
 Standards and best practices for writing code in the gametime-bingo project.
 
+> **Modularity**: This file defines *what* standards to follow when writing code.
+> For *how* code is reviewed, see: `.github/instructions/code-review.instructions.md`
+
 ## Technology Stack
 
 - **TypeScript 5.x** (strict mode)

@@ -7,6 +7,9 @@ applyTo: '**/*.md, **/*.mdx'
 
 Standards for writing clear, maintainable documentation.
 
+> **Modularity**: This file defines *what* standards to follow when writing docs.
+> For *how* docs are reviewed, see: `.github/instructions/documentation-review.instructions.md`
+
 ## Documentation Types
 
 ### README.md

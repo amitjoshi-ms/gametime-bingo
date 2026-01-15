@@ -7,6 +7,9 @@ applyTo: '**/*.test.ts, **/*.spec.ts, tests/**/*.ts'
 
 Standards and best practices for writing tests in the gametime-bingo project.
 
+> **Modularity**: Tests follow the same TypeScript standards as application code.
+> See: `.github/instructions/code-authoring.instructions.md` for TypeScript patterns.
+
 ## Test Structure
 
 ```text
