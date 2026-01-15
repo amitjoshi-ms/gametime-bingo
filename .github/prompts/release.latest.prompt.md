@@ -1,285 +1,301 @@
+---
+description: 'Guide for releasing changes from main to production via release branch'
+tools:
+  - bash
+  - github
+---
+
 # Release Latest Changes to Production
+
+## Quick Start
+
+**Most Common Path: Automated Release**
+```bash
+# 1. Trigger release workflow
+gh workflow run release.yml -f confirm=release
+
+# 2. Open in browser to approve
+gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url' | xargs open
+
+# 3. Watch progress
+gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+```
 
 ## Overview
 
-This prompt guides the release of changes from `main` to the `release` branch for Cloudflare Pages deployment.
+This workflow releases changes from `main` to `release` branch, which triggers Cloudflare Pages production deployment.
+
+**Key Features:**
+- ✅ Automated quality gates (lint, type check, tests, build)
+- 📅 Date-based versioning (no manual version selection)
+- 📝 Auto-generated changelog from conventional commits
+- 🔒 Branch protection with safe unlock/lock mechanism
+- ✨ Fast-forward only merge (no divergence)
 
 > **For rollback & troubleshooting**: See `.github/instructions/production-release.instructions.md`
 
-## How the Release Workflow Works
+## Pre-Flight Checklist
 
-The release workflow automates deploying code from `main` to production with quality gates:
+Before triggering a release, ensure:
 
+- [ ] All CI checks passing on `main` branch
+- [ ] Recent commits follow [conventional commit format](https://www.conventionalcommits.org/)
+- [ ] You have admin access to trigger production deployments
+- [ ] GitHub CLI (`gh`) is authenticated (for CLI method)
+
+## Release Workflow
+
+The automated workflow handles:
+
+1. **Quality Gates** - Runs lint, type check, tests, and build
+2. **Version Calculation** - Auto-calculates date-based version (YY.MDD.REV)
+3. **Changelog Generation** - Extracts commits since last tag, groups by type
+4. **Branch Management** - Safely unlocks, merges, and re-locks `release` branch
+5. **GitHub Release** - Creates tag and release with changelog + artifacts
+6. **Deployment** - Cloudflare Pages auto-deploys from `release` branch
+7. **Verification** - Validates production site is accessible
+
+**Flow:**
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  User triggers workflow (gh workflow run / Actions UI)          │
-│  - Must type "release" to confirm                               │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Pre-Release Validation Job                                     │
-│  - Install dependencies                                         │
-│  - Run linter (npm run lint)                                    │
-│  - Run type check (npm run check)                               │
-│  - Run unit tests (npm run test)                                │
-│  - Build application (npm run build)                            │
-│  - Upload build artifacts                                       │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Environment approval gate (production environment)             │
-│  - Workflow pauses and waits for reviewer approval              │
-│  - Prevents unauthorized releases                               │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  1. Determine version (date-based versioning)                   │
-│     - Format: YY.MDD.REV (year, month+day, revision)            │
-│     - Auto-calculated from current date                         │
-│     - Revision increments for same-day releases                 │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  2. Update package.json version                                 │
-│     - Use npm version command                                   │
-│     - Stage changes for commit                                  │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  3. Generate changelog                                          │
-│     - Extract commits since last tag                            │
-│     - Group by type (feat, fix, chore, etc.)                    │
-│     - Format as markdown                                        │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  4. Unlock release branch                                       │
-│     - Removes branch protection via GitHub API                  │
-│     - Checks HTTP status (404 = skip, 200 = delete, else fail)  │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  5. Fast-forward merge                                          │
-│     - git merge --ff-only origin/main                           │
-│     - Commit version bump if changes exist                      │
-│     - Fails if release has diverged (no force overwrites)       │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  6. Create release tag and GitHub release                       │
-│     - Format: YY.MDD.REV (date-based versioning)                │
-│     - Create GitHub release with changelog                      │
-│     - Attach release notes                                      │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  7. Re-lock release branch                                      │
-│     - Applies branch protection via GitHub API                  │
-│     - Verifies lock_branch=true after 2s delay                  │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  8. Create and upload release artifacts                         │
-│     - Download build artifacts from validation job              │
-│     - Create tar.gz archive                                     │
-│     - Upload to GitHub release                                  │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Post-Deployment Verification Job                               │
-│  - Wait for Cloudflare Pages deployment (60s)                   │
-│  - Check production site accessibility                          │
-│  - Verify HTML content                                          │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Cloudflare Pages detects push to release branch                │
-│  - Builds and deploys automatically                             │
-└─────────────────────────────────────────────────────────────────┘
-
-⚠️  ON FAILURE: Cleanup step automatically re-locks release branch
+Trigger → Validate → Approve → Version → Merge → Tag → Deploy → Verify
 ```
 
-**Why fast-forward only?** Ensures `release` is always an exact subset of `main` — no merge commits, no divergence, full traceability.
+**Safety:** Fast-forward only merge ensures `release` is always a subset of `main` (no divergence).
 
-## Prerequisites
+## Release Methods
 
-- All CI checks passing on `main`
-- You have admin access to the repository
-- GitHub CLI (`gh`) is authenticated
-- Commits follow [conventional commit format](https://www.conventionalcommits.org/) for changelog
+### Method 1: GitHub CLI (Recommended)
 
-## Release Process
-
-### Option 1: GitHub CLI + Web UI (Recommended)
-
+**For PowerShell:**
 ```powershell
-# 1. Trigger the release workflow
+# Trigger release
 gh workflow run release.yml -f confirm=release
 
-# 2. Get the run ID
+# Get run ID and open in browser for approval
 $runId = (gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
-Write-Host "Run ID: $runId"
-
-# 3. Open the run in browser to approve (environment approvals require web UI)
 gh run view $runId --web
 
-# 4. After approving in browser, watch the run complete
+# After approving, watch progress
 gh run watch $runId
+```
+
+**For Bash/Zsh:**
+```bash
+# Trigger release
+gh workflow run release.yml -f confirm=release
+
+# Get run URL and open for approval
+gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url' | xargs open  # macOS
+# OR: xdg-open $(gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url')  # Linux
+
+# Watch progress
+gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
 
 > **Note:** Environment deployment approvals must be done via the GitHub web UI.
 
-### Option 2: GitHub Web UI
+### Method 2: GitHub Web UI
 
-1. Go to **Actions** → **Release to Production**
-2. Click **Run workflow**
-3. Type `release` in the confirmation field
-4. Click **Run workflow**
-5. If environment protection is enabled, approve the pending deployment
+1. Navigate to **Actions** → **Release to Production**
+2. Click **Run workflow** dropdown
+3. Enter `release` in the confirmation field
+4. Click green **Run workflow** button
+5. When workflow pauses, click **Review deployments** to approve
+6. Watch workflow progress in the Actions tab
 
-The workflow will:
-- Run all quality gates (lint, type check, tests, build)
-- Calculate date-based version (YY.DDD.REV)
-- Generate changelog from conventional commits
-- Unlock the `release` branch
-- Fast-forward merge from `main`
-- Create a tag in format `YY.DDD.REV`
-- Create GitHub release with changelog
-- Attach build artifacts
-- Re-lock the `release` branch
-- Verify deployment
+### Method 3: Manual Release (Emergency Only)
 
-### Option 3: Manual Release (PowerShell)
+If the automated workflow fails repeatedly, perform manual release:
 
-If automated workflow fails, perform manual release:
+```bash
+# 1. Calculate version
+YEAR=$(date -u +"%y")
+MONTH=$(date -u +"%-m")
+DAY=$(date -u +"%d")
+MDD="${MONTH}${DAY}"
+TAG_PREFIX="${YEAR}.${MDD}."
 
-```powershell
-# 1. Determine new version (date-based: YY.MDD.REV)
-$year = (Get-Date).ToString("yy")
-$month = (Get-Date).Month
-$day = (Get-Date).ToString("dd")
-$mdd = "$month$day"
+# Find highest revision for today
+LATEST_REV=$(git tag -l "${TAG_PREFIX}*" | sed "s/${TAG_PREFIX}//" | sort -n | tail -1)
+REV=$((LATEST_REV + 1))
+VERSION="${YEAR}.${MDD}.${REV}"
 
-# Find existing tags for today to determine revision
-$tagPrefix = "$year.$mdd."
-$existingTags = git tag -l "$tagPrefix*"
-$rev = 0
-if ($existingTags) {
-    $maxRev = $existingTags | ForEach-Object { [int]($_ -replace $tagPrefix, '') } | Measure-Object -Maximum
-    $rev = $maxRev.Maximum + 1
-}
+echo "New version: $VERSION"
 
-$newVersion = "$year.$mdd.$rev"
-$newTag = $newVersion
-
-Write-Host "New version: $newVersion"
-Write-Host "New tag: $newTag"
-
-# 2. Unlock release branch
+# 2. Unlock release branch (requires admin access)
 gh api repos/{owner}/{repo}/branches/release/protection -X DELETE
 
-# 3. Fast-forward merge main to release
+# 3. Fast-forward merge
 git fetch origin
 git checkout release
 git merge --ff-only origin/main
 
-# 4. Update package.json on release branch and commit
-npm version $newVersion --no-git-tag-version
+# 4. Update version and commit
+npm version $VERSION --no-git-tag-version
 git add package.json package-lock.json
-git commit -m "chore(release): bump version to $newVersion"
+git commit -m "chore(release): bump version to $VERSION"
 git push origin release
 
-# 5. Create tag
-git tag $newTag -m "Release $newTag"
-git push origin $newTag
+# 5. Create tag and release
+git tag $VERSION -m "Release $VERSION"
+git push origin $VERSION
+gh release create $VERSION --title "Release $VERSION" --generate-notes --target release
 
-# 6. Generate changelog (simplified)
-$lastTag = git describe --tags --abbrev=0 HEAD~1 2>$null
-$commits = git log "$lastTag..HEAD" --pretty=format:"%s"
-
-# 7. Create GitHub release
-gh release create $newTag --title "Release $newTag" --notes "See commits for details" --target release
-
-# 8. Re-lock release branch
-gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f allow_force_pushes=false -f allow_deletions=false
+# 6. Re-lock release branch
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT \
+  -f lock_branch=true -f enforce_admins=true \
+  -f allow_force_pushes=false -f allow_deletions=false
 ```
 
 ## Date-Based Versioning
 
-Versions are automatically calculated based on the current date:
+Versions follow the format: **`YY.MDD.REV`**
 
-- **Format**: `YY.MDD.REV`
-  - `YY` = 2-digit year (e.g., 26 for 2026)
-  - `M` = Month (1-12, no leading zero)
-  - `DD` = Day of month (01-31, with leading zero)
-  - `REV` = Revision number (0-based, increments for same-day releases)
+- **YY** = 2-digit year (e.g., 26 for 2026)
+- **M** = Month (1-12, no leading zero)
+- **DD** = Day (01-31, with leading zero)
+- **REV** = Revision (0-based, increments for same-day releases)
 
 **Examples:**
-- `26.101.0` - First release on January 1, 2026
-- `26.111.0` - First release on January 11, 2026
-- `26.111.1` - Second release on January 11, 2026
-- `26.1101.0` - First release on November 1, 2026
-- `26.1111.0` - First release on November 11, 2026
+```
+26.101.0   → First release on January 1, 2026
+26.111.0   → First release on January 11, 2026
+26.111.1   → Second release on January 11, 2026
+26.1101.0  → First release on November 1, 2026
+26.1231.0  → First release on December 31, 2026
+```
 
 **Benefits:**
-- No manual version selection needed
-- Releases are naturally ordered chronologically
-- Easy to identify when a release was made (month and day are readable)
-- Supports multiple releases per day via revision number
+- 📅 No manual version selection
+- 📊 Chronologically sortable
+- 🔍 Easy to identify release date
+- 🔄 Supports multiple releases per day
 
-## Conventional Commit Format
+## Conventional Commits
 
-For automatic changelog generation, use conventional commits:
+For automatic changelog generation, commits should follow this format:
 
 ```
-feat: add new game mode
-fix: correct score calculation
-chore: update dependencies
-docs: improve README
-refactor: simplify card generation
-test: add unit tests for validation
-ci: update release workflow
+<type>: <description>
+
+[optional body]
 ```
 
-Format: `<type>: <description>`
+**Common Types:**
+- `feat:` - New features
+- `fix:` - Bug fixes  
+- `chore:` - Maintenance tasks
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `test:` - Test changes
+- `ci:` - CI/CD changes
 
-Common types:
-- `feat`: New features
-- `fix`: Bug fixes
-- `chore`: Maintenance tasks
-- `docs`: Documentation changes
-- `refactor`: Code refactoring
-- `test`: Test changes
-- `ci`: CI/CD changes
+**Examples:**
+```bash
+git commit -m "feat: add multiplayer game mode"
+git commit -m "fix: correct score calculation bug"
+git commit -m "chore: update dependencies"
+git commit -m "docs: improve setup instructions"
+```
 
-## Tag Format
+The changelog groups commits by type and formats them automatically.
 
-Tags use date-based versioning without a prefix:
-- Format: `YY.MDD.REV` (e.g., 26.101.0, 26.111.0, 26.1101.0)
-- YY = 2-digit year
-- M = Month (1-12, no leading zero)
-- DD = Day of month (01-31, with leading zero)
-- REV = Revision for same-day releases (starts at 0)
+## Post-Deployment Verification
 
-Examples:
-- `26.101.0` - First release on January 1, 2026
-- `26.111.0` - First release on January 11, 2026
-- `26.111.1` - Second release on January 11, 2026
-- `26.1101.0` - First release on November 1, 2026
-- `26.1111.0` - First release on November 11, 2026
+After deployment completes, verify these key areas:
 
-## Cloudflare Pages
+**Quick Checks:**
+```bash
+# Check site is accessible
+curl -I https://gametime-bingo.pages.dev
 
-The `release` branch is connected to Cloudflare Pages for production deployment. After the release workflow completes, Cloudflare will automatically build and deploy the changes.
+# Check if game loads
+curl https://gametime-bingo.pages.dev | grep -q "Bingo" && echo "✅ Site OK" || echo "❌ Site Issue"
+```
 
-## Rollback
+**Manual Verification:**
+- [ ] Production site loads (https://gametime-bingo.pages.dev)
+- [ ] No console errors in browser DevTools
+- [ ] Home page renders correctly
+- [ ] Can create a new game
+- [ ] Can join existing game via URL
+- [ ] P2P connection establishes between players
 
-If a release has issues, use Cloudflare Dashboard for immediate rollback:
+**GitHub Verification:**
+- [ ] Build artifacts attached to release
+- [ ] Changelog shows correct commits
+- [ ] Tag created with correct version
 
+## Troubleshooting
+
+### Common Issues
+
+**Fast-Forward Merge Failed**
+```
+Error: fatal: Not possible to fast-forward, aborting.
+```
+**Cause:** `release` branch has diverged from `main`  
+**Fix:** Reset release to match main (⚠️ discards release-only commits):
+```bash
+git checkout release
+git reset --hard origin/main
+git push --force origin release
+```
+
+**Branch Protection API Errors**
+```
+Error: Resource not accessible by integration
+```
+**Cause:** Token lacks required permissions  
+**Fix:**
+1. Check token has `repo` scope in Settings → Developer settings → Personal access tokens
+2. Manually unlock via Settings → Branches → release → Edit
+3. Complete release manually
+4. Manually re-lock the branch
+
+**Version Bump Failed**
+```
+Error: npm version failed
+```
+**Cause:** Version already exists or package.json corrupted  
+**Fix:**
+```bash
+# Check current version
+npm pkg get version
+
+# Manually update package.json version
+npm version 26.115.0 --no-git-tag-version
+npm install  # Update package-lock.json
+git add package.json package-lock.json
+git commit -m "chore: bump version"
+```
+
+**Deployment Not Triggering**
+**Cause:** Cloudflare Pages not watching `release` branch  
+**Fix:**
 1. Go to Cloudflare Pages dashboard
-2. Select gametime-bingo project  
+2. Select gametime-bingo project
+3. Settings → Builds & deployments → Production branch
+4. Verify it's set to `release`
+
+### Rollback Procedures
+
+See `.github/instructions/production-release.instructions.md` for detailed rollback procedures.
+
+**Quick Rollback (Cloudflare Dashboard):**
+1. Go to Cloudflare Pages dashboard
+2. Select gametime-bingo project
 3. Find previous successful deployment
 4. Click "Retry deployment"
 
-See `.github/instructions/production-release.instructions.md` for detailed rollback procedures.
+**Code Rollback (Git):**
+```bash
+# Identify last good commit
+git log --oneline release
+
+# Create revert branch
+git checkout -b revert/bad-release main
+git revert <bad-commit-hash>
+
+# Create PR, merge, then trigger new release
+```
