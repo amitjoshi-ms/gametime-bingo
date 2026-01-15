@@ -3,7 +3,7 @@
  * Based on: specs/001-bingo-game/contracts/p2p-protocol.md
  */
 
-import { joinRoom as trysteroJoinRoom } from 'trystero/nostr';
+import { joinRoom as trysteroJoinRoom, pauseRelayReconnection, resumeRelayReconnection } from 'trystero/torrent';
 import type { Room } from 'trystero';
 import { generateRoomCode } from '../utils/random';
 import type {
@@ -27,6 +27,16 @@ import type {
 
 /** App ID for Trystero room isolation */
 const APP_ID = 'gametime-bingo-v1';
+
+/** 
+ * BitTorrent WebTorrent trackers for WebRTC signaling
+ * These are reliable public trackers designed for high traffic
+ */
+const TRACKER_URLS = [
+  'wss://tracker.webtorrent.dev',
+  'wss://tracker.openwebtorrent.com',
+  'wss://tracker.btorrent.xyz',
+];
 
 /** Ping interval in milliseconds */
 const PING_INTERVAL_MS = 5000;
@@ -119,7 +129,7 @@ export function createRoom(): { roomCode: string; room: Room; actions: RoomActio
   }
 
   const roomCode = generateRoomCode();
-  const room = trysteroJoinRoom({ appId: APP_ID }, roomCode);
+  const room = trysteroJoinRoom({ appId: APP_ID, relayUrls: TRACKER_URLS }, roomCode);
   
   currentRoom = room;
   currentRoomCode = roomCode;
@@ -140,7 +150,7 @@ export function joinRoom(roomCode: string): { room: Room; actions: RoomActions }
   }
 
   const normalizedCode = roomCode.toUpperCase().trim();
-  const room = trysteroJoinRoom({ appId: APP_ID }, normalizedCode);
+  const room = trysteroJoinRoom({ appId: APP_ID, relayUrls: TRACKER_URLS }, normalizedCode);
   
   currentRoom = room;
   currentRoomCode = normalizedCode;
@@ -187,6 +197,24 @@ export function getActions(): RoomActions | null {
  */
 export function isInRoom(): boolean {
   return currentRoom !== null;
+}
+
+/**
+ * Stops Trystero relay/tracker reconnection attempts for peer discovery.
+ * Call this when the game starts to stop reconnecting to relay/tracker servers.
+ * Note: Trystero uses "relay" terminology internally for all strategies (Nostr, torrent, etc).
+ */
+export function stopPeerDiscovery(): void {
+  pauseRelayReconnection();
+}
+
+/**
+ * Resumes Trystero relay/tracker reconnection attempts for peer discovery.
+ * Call this when returning to lobby or creating a new game.
+ * Note: Trystero uses "relay" terminology internally for all strategies (Nostr, torrent, etc).
+ */
+export function resumePeerDiscovery(): void {
+  resumeRelayReconnection();
 }
 
 // ============================================================================

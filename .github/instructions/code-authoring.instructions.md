@@ -230,6 +230,91 @@ function getCallNumberError(
 
 ## Network Layer Guidelines
 
+### Trystero Strategy Selection
+
+This project uses **BitTorrent/WebTorrent** strategy for P2P signaling:
+
+```typescript
+// ✅ Good: Use torrent strategy with explicit tracker URLs
+import { joinRoom } from 'trystero/torrent';
+
+const TRACKER_URLS = [
+  'wss://tracker.webtorrent.dev',
+  'wss://tracker.openwebtorrent.com',
+  'wss://tracker.btorrent.xyz',
+];
+
+const room = joinRoom({ appId: APP_ID, relayUrls: TRACKER_URLS }, roomCode);
+```
+
+**Strategy Notes**:
+- **BitTorrent** (`trystero/torrent`): Reliable public WebTorrent trackers, no setup required
+- **Nostr** (`trystero/nostr`): May experience rate limiting or downtime with public relays
+- Multiple trackers provide redundancy - connection succeeds if any one works
+- Tracker WebSocket failures after connection are normal (peers communicate directly via WebRTC)
+
+### WebRTC Connection Timing
+
+**Critical**: WebRTC peer connections are asynchronous. Never send messages immediately after joining a room:
+
+```typescript
+// ❌ Bad: Sending message before peer connection established
+joinRoom(roomCode);
+sendPlayerJoin(playerId, playerName); // May fail silently!
+
+// ✅ Good: Wait for peer connection callback
+joinRoom(roomCode);
+onPeerJoin((peerId) => {
+  // WebRTC DataChannel is now open
+  sendPlayerJoin(playerId, playerName);
+});
+
+// ✅ Good: Also check for already-connected peers (race condition)
+const connectedPeers = getConnectedPeers();
+if (connectedPeers.length > 0) {
+  sendPlayerJoin(playerId, playerName);
+}
+```
+
+### Host State Synchronization
+
+When the host updates internal session state, it **must** also update the reactive store for UI:
+
+```typescript
+// ❌ Bad: Only updating hostSession (UI won't reflect changes)
+hostSession = addPlayer(hostSession, playerId, playerName);
+broadcastSyncState(hostSession);
+
+// ✅ Good: Update both hostSession AND reactive store
+hostSession = addPlayer(hostSession, playerId, playerName);
+gameStore.setSession(hostSession); // Update UI!
+broadcastSyncState(hostSession);
+```
+
+**Key principle**: The host has TWO sources of truth:
+1. `hostSession` - Used for validation and broadcasting
+2. `gameStore` - Used for the host's own UI rendering
+
+Both must stay in sync for host UI to work correctly.
+
+### Peer Discovery Lifecycle
+
+Stop tracker reconnection once all players are connected to reduce console noise:
+
+```typescript
+import { pauseRelayReconnection, resumeRelayReconnection } from 'trystero/torrent';
+
+// When game starts (no new players needed)
+export function stopPeerDiscovery(): void {
+  pauseRelayReconnection();
+}
+
+// When returning to lobby (new players welcome)
+export function resumePeerDiscovery(): void {
+  resumeRelayReconnection();
+}
+```
+
 ### Message Types
 
 - Define explicit message types for P2P communication
@@ -298,6 +383,27 @@ function handleMessage(raw: MessagePayload): void {
 - Log suspicious messages for debugging
 - Validate message structure and data ranges
 - Check bounds on arrays and numbers (e.g., number must be 1-25)
+
+### P2P Troubleshooting
+
+Common issues and solutions:
+
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| Players can't connect | Nostr relays down | Switch to `trystero/torrent` strategy |
+| "WebSocket connection failed" logs | Normal tracker redundancy | Ignore if connection works (only need 1 tracker) |
+| Player-join not received | Message sent before WebRTC ready | Wait for `onPeerJoin` callback |
+| Host UI not updating | Only updating `hostSession`, not `gameStore` | Call `gameStore.setSession(hostSession)` |
+| Turn validation fails | Turn index out of sync | Ensure turn advances in both session and store |
+| Repeated tracker reconnection | Game still discovering peers | Call `stopPeerDiscovery()` when game starts |
+
+**Debug logging pattern**:
+```typescript
+// Add temporarily when debugging P2P issues
+console.log('[P2P] Sending message:', payload);
+console.log('[P2P Host] Received message:', payload);
+// Remember to remove before committing!
+```
 
 ## SPA Architecture Guidelines
 
