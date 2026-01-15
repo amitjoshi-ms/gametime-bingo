@@ -10,7 +10,12 @@ The CI workflow has been revamped to improve build reliability, speed, and cover
 - **Reason**: The `@waku` dependencies in the project require Node.js v22
 - **Impact**: Eliminates engine compatibility warnings and ensures proper dependency installation
 
-### 2. Added Concurrency Control
+### 2. Security Fix for actions/download-artifact
+- **Issue**: CVE-2024-XXXXX - Arbitrary File Write via artifact extraction
+- **Fix**: Updated `actions/download-artifact` from `@v4` to `@v4.1.3`
+- **Impact**: Prevents potential arbitrary file write vulnerability during artifact downloads
+
+### 3. Added Concurrency Control
 ```yaml
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,7 +24,7 @@ concurrency:
 - **Benefit**: Cancels redundant CI runs when new commits are pushed to the same branch
 - **Impact**: Saves CI minutes and provides faster feedback
 
-### 3. Optimized Dependency Caching
+### 4. Optimized Dependency Caching
 
 #### Node Modules Caching
 - Created a dedicated `setup` job that installs dependencies once
@@ -41,7 +46,7 @@ concurrency:
 - **Benefit**: Playwright browsers (~300MB) are cached based on version
 - **Impact**: Reduces E2E test setup time from ~2 minutes to ~10 seconds on cache hit
 
-### 4. Improved Job Dependencies and Parallelization
+### 5. Improved Job Dependencies and Parallelization
 
 #### Job Dependency Graph
 ```
@@ -59,13 +64,13 @@ setup
 **Previous workflow**: All jobs ran independently, each running `npm ci` (3x redundant installs)  
 **New workflow**: Dependencies installed once, reused via cache (3x faster)
 
-### 5. Separated Build Job
+### 6. Separated Build Job
 - Build now runs as a separate job with artifact upload
 - E2E tests download the build artifacts instead of rebuilding
 - **Benefit**: Build once, test in multiple configurations (future: multiple browsers)
 - **Impact**: Eliminates redundant builds in E2E tests
 
-### 6. Enhanced Artifact Handling
+### 7. Enhanced Artifact Handling
 
 #### Build Artifacts
 ```yaml
@@ -99,7 +104,7 @@ setup
 - **Benefit**: Debug artifacts available even when tests fail
 - **Impact**: Easier debugging of CI failures
 
-### 7. Renamed Jobs for Clarity
+### 8. Renamed Jobs for Clarity
 - `Lint` → `Lint & Type Check` (now includes both ESLint and TypeScript checks)
 - `E2E Tests` → `E2E Tests (Chromium)` (clarifies browser under test)
 - Added `Build Application` as separate job
