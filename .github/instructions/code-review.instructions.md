@@ -159,6 +159,14 @@ try {
 1. **Understand the context**: Read the PR description and linked issues
 2. **Review the diff**: Go through changes file by file
 3. **Run locally**: If changes are significant, check out and test
+   ```bash
+   git fetch origin pull/<PR_NUMBER>/head:pr-<PR_NUMBER>
+   git checkout pr-<PR_NUMBER>
+   npm ci
+   npm run check
+   npm test
+   npm run test:e2e  # If UI changes
+   ```
 4. **Leave comments**: Be specific and constructive
 5. **Approve or request changes**: Make a clear decision
 

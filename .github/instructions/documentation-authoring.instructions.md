@@ -148,6 +148,12 @@ interface Player {
 }
 ```
 
+**Best Practices**:
+- Document the interface's purpose in the main comment
+- Add inline comments for each property
+- Specify units for numeric values (ms, seconds, etc.)
+- Explain readonly fields and why they're immutable
+
 ### Type Documentation
 
 ```typescript

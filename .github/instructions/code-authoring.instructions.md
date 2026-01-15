@@ -32,6 +32,8 @@ src/
     ui/         # Reusable UI primitives (Button, Input, Modal)
 ```
 
+**Note**: The `components/ui/` directory contains reusable UI primitives (e.g., Button, Input, Modal).
+
 ## TypeScript Guidelines
 
 ### Strict Mode Requirements
@@ -94,6 +96,34 @@ function clamp(value: number, min: number, max: number): number {
 </script>
 ```
 
+**Key Concepts**:
+- `$state()`: Creates reactive state (replaces `let` variables with reactivity)
+- `$derived()`: Creates computed values (replaces `$:` reactive declarations)
+- `$effect()`: Runs side effects when dependencies change (replaces `$:` statements with side effects)
+- `$props()`: Receives component props (see Component Props section)
+
+**Performance Tips**:
+```svelte
+<script lang="ts">
+  // ✅ Good: Use $derived for computations
+  let items = $state([1, 2, 3, 4, 5]);
+  let sum = $derived(items.reduce((a, b) => a + b, 0));
+  
+  // ✅ Good: Cleanup in $effect
+  $effect(() => {
+    const timer = setInterval(() => console.log('tick'), 1000);
+    return () => clearInterval(timer); // Cleanup function
+  });
+  
+  // ❌ Bad: Using $effect for computations (use $derived instead)
+  let count = $state(1);  // Declare count for example
+  let doubled = $state(0);
+  $effect(() => {
+    doubled = count * 2; // Should use $derived
+  });
+</script>
+```
+
 ### Component Props
 
 ```svelte
@@ -108,6 +138,12 @@ function clamp(value: number, min: number, max: number): number {
   let { value, label = 'Default', onchange }: Props = $props();
 </script>
 ```
+
+**Best Practices**:
+- Always define a `Props` interface for type safety
+- Use optional properties with `?` for optional props
+- Provide default values in the destructuring
+- Use `$props()` rune for all props (Svelte 5 pattern)
 
 ### Event Handling
 
@@ -154,17 +190,41 @@ function markNumber(card: BingoCard, calledNumber: number): void {
 
 - Always validate inputs at boundaries (network, user input)
 - Return detailed error information, don't just throw
+- Use explicit error messages for user feedback
 
 ```typescript
-// ✅ Good: Return validation result
-function validateNumber(value: unknown): ValidationResult<number> {
-  if (typeof value !== 'number') {
-    return { success: false, error: 'Expected number' };
+// ✅ Good: Boolean validation (matches src/lib/game/validation.ts)
+function isValidPlayerName(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.length >= 1 && trimmed.length <= MAX_NAME_LENGTH;
+}
+
+// ✅ Good: Error getter with context (matches getJoinError pattern)
+function getJoinError(session: GameSession, playerName: string): string | null {
+  if (session.status !== 'lobby') {
+    return 'Game has already started';
   }
-  if (value < 1 || value > 25) {
-    return { success: false, error: 'Number must be 1-25' };
+  if (!isValidPlayerName(playerName)) {
+    return `Name must be 1-${MAX_NAME_LENGTH} characters`;
   }
-  return { success: true, value };
+  return null; // Valid
+}
+
+// ✅ Good: Boolean validation (matches src/lib/game/validation.ts)
+function isValidNumber(num: number): boolean {
+  return Number.isInteger(num) && num >= 1 && num <= TOTAL_NUMBERS;
+}
+
+// ✅ Good: Error getter with game context (matches getCallNumberError)
+function getCallNumberError(
+  session: GameSession,
+  playerId: string,
+  num: number
+): string | null {
+  if (session.status !== 'playing') return 'Game is not in progress';
+  if (!isValidNumber(num)) return 'Invalid number (must be 1-25)';
+  if (session.calledNumbers.includes(num)) return 'Number already called';
+  return null;
 }
 ```
 
@@ -175,13 +235,29 @@ function validateNumber(value: unknown): ValidationResult<number> {
 - Define explicit message types for P2P communication
 - Keep payload sizes small (P2P has limits)
 - Use discriminated unions for message handling
+- Include index signatures for Trystero compatibility
 
 ```typescript
-// ✅ Good: Discriminated union for messages
-type GameMessage =
-  | { type: 'number-called'; number: number }
-  | { type: 'player-joined'; player: Player }
-  | { type: 'bingo-claimed'; playerId: string };
+// ✅ Good: Discriminated union for messages with index signature
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+export interface CallNumberPayload {
+  [key: string]: JsonValue;  // Required for Trystero
+  type: 'call-number';
+  playerId: string;
+  number: number;
+}
+
+export interface NumberCalledPayload {
+  [key: string]: JsonValue;
+  type: 'num-called';  // Matches src/lib/network/messages.ts
+  number: number;
+  calledBy: string;
+  nextTurnIndex: number;
+  timestamp: number;
+}
+
+export type MessagePayload = CallNumberPayload | NumberCalledPayload | /* ... */;
 ```
 
 ### Error Handling
@@ -193,30 +269,66 @@ type GameMessage =
 ### P2P Security
 
 ```typescript
-// ✅ Good: Validate incoming P2P messages
-function handleMessage(raw: unknown): void {
-  const result = validateGameMessage(raw);
-  if (!result.success) {
-    console.warn('Invalid message received:', result.error);
-    return;
-  }
-  // Process validated message
-  processMessage(result.value);
+// ✅ Good: Type guard for message validation
+export function isCallNumber(msg: MessagePayload): msg is CallNumberPayload {
+  return msg.type === 'call-number';
 }
 
-// ✅ Good: Type guard for message validation
-function isNumberCalledMessage(msg: GameMessage): msg is { type: 'number-called'; number: number } {
-  return msg.type === 'number-called';
+// ✅ Good: Validate incoming P2P messages
+function handleMessage(raw: MessagePayload): void {
+  // Type guards provide runtime validation
+  if (isCallNumber(raw)) {
+    // TypeScript knows this is CallNumberPayload now
+    if (!isValidNumber(raw.number)) {
+      console.warn('Invalid number in message:', raw.number);
+      return;
+    }
+    processCallNumber(raw);
+  } else if (isNumberCalled(raw)) {  // Type guard from network/messages.ts
+    processNumberCalled(raw);
+  }
+  // ... handle other message types
 }
 ```
+
+**Security Best Practices**:
+- Always validate P2P messages before processing
+- Use TypeScript type guards for runtime validation
+- Never trust data received from peers
+- Log suspicious messages for debugging
+- Validate message structure and data ranges
+- Check bounds on arrays and numbers (e.g., number must be 1-25)
 
 ## SPA Architecture Guidelines
 
 ### Client-Side State
 
 - All state lives in the browser (no server)
-- Use Svelte stores for shared state across components
+- Use Svelte stores (`*.svelte.ts` files) for shared state across components
 - Persist critical state to localStorage for recovery
+
+```typescript
+// ✅ Good: Svelte 5 store with runes (src/lib/stores/game.svelte.ts)
+let session = $state<GameSession | null>(null);
+let localPlayerId = $state<string | null>(null);
+
+// Derived state
+const isInGame = $derived(session !== null);
+const isHost = $derived(
+  session !== null && localPlayerId !== null && session.hostId === localPlayerId
+);
+
+// Note: This is simplified for illustration. Actual implementation uses
+// internal derived variables prefixed with _ and getter functions.
+// Export functions that access the state
+export function getSession() {
+  return session;
+}
+
+export function setSession(newSession: GameSession | null) {
+  session = newSession;
+}
+```
 
 ```typescript
 // ✅ Good: State recovery on page refresh
@@ -247,6 +359,40 @@ window.location.hash = roomId;
 - Show clear connection status to users
 - Queue actions during brief disconnections
 
+**localStorage Security**:
+```typescript
+// ✅ Good: Validate data from localStorage (from src/lib/utils/storage.ts)
+export function loadState(): PersistedState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    
+    const state = JSON.parse(raw) as PersistedState;
+    
+    // Validate required fields
+    if (!state.playerId || !state.playerName) {
+      return null;
+    }
+    
+    // Check expiration (1 hour)
+    const ONE_HOUR = 60 * 60 * 1000;
+    if (Date.now() - state.savedAt > ONE_HOUR) {
+      clearState();
+      return null;
+    }
+    
+    return state;
+  } catch (error) {
+    console.warn('Failed to load state from localStorage:', error);
+    return null;
+  }
+}
+
+// ❌ Bad: Trusting localStorage data without validation
+const saved = localStorage.getItem('gameState');
+const gameState = JSON.parse(saved!); // Unsafe!
+```
+
 ## Code Quality Checklist
 
 Before committing code:
@@ -254,11 +400,17 @@ Before committing code:
 - [ ] TypeScript compiles without errors (`npm run check`)
 - [ ] ESLint passes (`npm run lint`)
 - [ ] Unit tests pass (`npm test`)
+- [ ] E2E tests pass if UI changes made (`npm run test:e2e`)
 - [ ] No `any` types (use `unknown` if needed)
 - [ ] Functions have explicit return types
-- [ ] Components use Svelte 5 runes
+- [ ] Components use Svelte 5 runes (no legacy `$:`)
 - [ ] Game logic is pure and testable
-- [ ] Network messages are typed
+- [ ] Network messages are typed and validated
+- [ ] Error handling is present and comprehensive
+- [ ] No hardcoded secrets or credentials
+
+> **Related**: See `.github/instructions/test-authoring.instructions.md` for testing guidelines
+> **Related**: See `.github/instructions/code-review.instructions.md` for review standards
 
 ## Commands
 
@@ -266,7 +418,7 @@ Before committing code:
 npm run dev       # Start development server
 npm run build     # Build for production
 npm run check     # TypeScript type checking
-npm run lint      # ESLint
+npm run lint      # Run ESLint
 npm test          # Run unit tests
-npm run test:e2e  # Run E2E tests
+npm run test:e2e  # Run E2E tests (headless)
 ```

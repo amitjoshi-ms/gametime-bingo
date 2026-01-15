@@ -15,11 +15,12 @@ Standards and best practices for writing tests in the gametime-bingo project.
 ```text
 tests/
   unit/           # Vitest unit tests
-    game/         # Game logic tests
-    utils/        # Utility function tests
-  component/      # (future) Svelte component tests
-  e2e/            # Playwright E2E tests
+    game/         # Game logic tests (card.test.ts, session.test.ts, etc.)
+    utils/        # Utility function tests (random.test.ts, storage.test.ts)
+  e2e/            # Playwright E2E tests (home.spec.ts, multiplayer.spec.ts)
 ```
+
+**Note**: Create `tests/component/` directory when adding Svelte component tests.
 
 ## Unit Testing with Vitest
 
@@ -79,16 +80,40 @@ describe('markNumber', () => {
 
 ```typescript
 // ✅ Good: Test edge cases and boundaries
-describe('validateNumber', () => {
+describe('isValidNumber', () => {
+  it('should return true for numbers 1-25', () => {
+    for (let i = 1; i <= 25; i++) {
+      expect(isValidNumber(i)).toBe(true);
+    }
+  });
+
+  it('should return false for 0', () => {
+    expect(isValidNumber(0)).toBe(false);
+  });
+
+  it('should return false for numbers greater than 25', () => {
+    expect(isValidNumber(26)).toBe(false);
+    expect(isValidNumber(100)).toBe(false);
+  });
+
+  it('should return false for non-integers', () => {
+    expect(isValidNumber(1.5)).toBe(false);
+    expect(isValidNumber(NaN)).toBe(false);
+  });
+});
+```
+
+**Alternative: Using `it.each` for parameterized tests**:
+```typescript
+describe('isValidNumber', () => {
   it.each([
     [0, false, 'below minimum'],
     [1, true, 'minimum valid'],
     [25, true, 'maximum valid'],
     [26, false, 'above maximum'],
     [NaN, false, 'NaN'],
-    [Infinity, false, 'Infinity'],
-  ])('validateNumber(%s) should return %s (%s)', (input, expected, _description) => {
-    expect(validateNumber(input).success).toBe(expected);
+  ])('isValidNumber(%s) should return %s (%s)', (input, expected, _description) => {
+    expect(isValidNumber(input)).toBe(expected);
   });
 });
 ```
@@ -312,13 +337,31 @@ Before submitting tests:
 - [ ] Mocks are cleaned up after tests
 - [ ] E2E tests use accessible selectors (role, label)
 
+> **For code review**: See `.github/instructions/code-review.instructions.md` for review standards
+
 ## Commands
 
 ```bash
-npm test                     # Run unit tests
-npm run test:watch           # Run unit tests in watch mode
-npm test -- --coverage       # Run with coverage report (requires vitest config)
-npm run test:e2e             # Run E2E tests (headless)
-npm run test:e2e -- --headed # Run E2E tests (visible browser)
-npm run test:e2e -- --debug  # Run E2E tests with debugger
+npm test                        # Run unit tests
+npm run test:watch              # Run unit tests in watch mode
+npm test -- --coverage          # Run with coverage report
+npm run test:e2e                # Run E2E tests (headless)
+npm run test:e2e -- --headed    # Run E2E tests (visible browser)
+npm run test:e2e -- --debug     # Run E2E tests with debugger
+npx playwright test --project=chromium  # Run E2E in specific browser
+```
+
+**Run Specific Tests**:
+```bash
+# Run single unit test file
+npm test -- tests/unit/game/card.test.ts
+
+# Run tests matching a pattern
+npm test -- -t "should generate"
+
+# Run single E2E test file
+npx playwright test tests/e2e/home.spec.ts
+
+# Run E2E test in headed mode for debugging
+npx playwright test tests/e2e/home.spec.ts --headed
 ```

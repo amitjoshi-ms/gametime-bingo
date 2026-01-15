@@ -193,8 +193,12 @@ Suggestion: "Run tests before committing" instead of
 
 1. **Read the diff**: Understand what changed
 2. **Check links**: Verify all links work
-3. **Test code**: Run any code examples
-4. **Read in context**: View rendered markdown
+   ```bash
+   # Check links in a file (requires npx markdown-link-check)
+   npx markdown-link-check README.md
+   ```
+3. **Test code**: Run any code examples to verify they work
+4. **Read in context**: View rendered markdown (GitHub preview or local tools)
 5. **Leave comments**: Be specific and helpful
 6. **Approve or request changes**: Make clear decision
 
