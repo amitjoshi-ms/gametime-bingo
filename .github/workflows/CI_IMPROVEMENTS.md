@@ -66,9 +66,10 @@ setup
 
 ### 6. Separated Build Job
 - Build now runs as a separate job with artifact upload
-- E2E tests download the build artifacts instead of rebuilding
-- **Benefit**: Build once, test in multiple configurations (future: multiple browsers)
-- **Impact**: Eliminates redundant builds in E2E tests
+- Build artifacts are uploaded for inspection and potential future use
+- **Note**: E2E tests currently run against the dev server (`npm run dev`), not the production build
+- **Benefit**: Validates the production build succeeds; enables future reuse across multiple browser configurations
+- **Impact**: Ensures build issues are caught early while keeping E2E tests fast
 
 ### 7. Enhanced Artifact Handling
 
