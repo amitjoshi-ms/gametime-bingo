@@ -16,6 +16,8 @@ tools:
 **Most Common Path: Automated Release**
 
 > **Note:** The workflow requires manual branch unlock/lock because `GITHUB_TOKEN` lacks admin permissions.
+>
+> **Placeholder:** Replace `{owner}/{repo}` with your repository (e.g., `myorg/gametime-bingo`).
 
 **For PowerShell:**
 ```powershell
