@@ -64,17 +64,26 @@
    * Sends player-join message once a peer connection is established.
    * WebRTC connections are asynchronous, so we register a callback for when
    * a peer joins and also check if already connected.
+   * Uses a guard flag to prevent duplicate sends from race conditions.
    */
   function sendPlayerJoinWhenConnected(playerId: string, playerName: string): void {
+    let hasSent = false;
+    
+    const safeSend = (): void => {
+      if (hasSent) return;
+      hasSent = true;
+      sendPlayerJoin(playerId, playerName);
+    };
+    
     // Register callback to send player-join when peer connection is established
     onPeerJoin((_peerId) => {
-      sendPlayerJoin(playerId, playerName);
+      safeSend();
     });
     
     // Check if already connected (unlikely but possible if connection was fast)
     const connectedPeers = getConnectedPeers();
     if (connectedPeers.length > 0) {
-      sendPlayerJoin(playerId, playerName);
+      safeSend();
     }
   }
 
