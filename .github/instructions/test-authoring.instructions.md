@@ -17,7 +17,7 @@ tests/
   unit/           # Vitest unit tests
     game/         # Game logic tests
     utils/        # Utility function tests
-  component/      # Svelte component tests
+  component/      # (future) Svelte component tests
   e2e/            # Playwright E2E tests
 ```
 
@@ -33,26 +33,28 @@ tests/
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
-import { generateCard, markCell } from '$lib/game/card';
+import { generateCard, markNumber } from '$lib/game/card';
+import type { BingoCard } from '$lib/game/types';
 
 describe('generateCard', () => {
-  it('should generate a 5x5 card with 25 cells', () => {
+  it('should generate a 5x5 grid', () => {
     const card = generateCard();
-    expect(card.cells).toHaveLength(25);
+    expect(card.grid).toHaveLength(5);
+    expect(card.grid[0]).toHaveLength(5);
   });
 
-  it('should have unique numbers in each column range', () => {
+  it('should have unique numbers from 1 to 25', () => {
     const card = generateCard();
-    // B column: 1-15, I column: 16-30, etc.
-    const bColumn = card.cells.filter((_, i) => i % 5 === 0);
-    bColumn.forEach(cell => {
-      expect(cell.value).toBeGreaterThanOrEqual(1);
-      expect(cell.value).toBeLessThanOrEqual(15);
+    const values = card.grid.flat();
+    expect(new Set(values).size).toBe(25);
+    values.forEach(value => {
+      expect(value).toBeGreaterThanOrEqual(1);
+      expect(value).toBeLessThanOrEqual(25);
     });
   });
 });
 
-describe('markCell', () => {
+describe('markNumber', () => {
   let card: BingoCard;
 
   beforeEach(() => {
@@ -60,15 +62,15 @@ describe('markCell', () => {
   });
 
   it('should mark the cell with matching number', () => {
-    const number = card.cells[0].value;
-    const result = markCell(card, number);
-    expect(result.cells[0].marked).toBe(true);
+    const number = card.grid[0][0];
+    const result = markNumber(card, number);
+    expect(result.marked[0][0]).toBe(true);
   });
 
   it('should not mutate the original card', () => {
-    const number = card.cells[0].value;
-    markCell(card, number);
-    expect(card.cells[0].marked).toBe(false);
+    const number = card.grid[0][0];
+    markNumber(card, number);
+    expect(card.marked[0][0]).toBe(false);
   });
 });
 ```
@@ -168,6 +170,8 @@ export class HomePage {
 ```
 
 ### Accessibility Testing
+
+> **Note**: Requires `@axe-core/playwright` package (install separately if needed).
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -311,7 +315,7 @@ Before submitting tests:
 ```bash
 pnpm test                    # Run unit tests
 pnpm test:watch              # Run unit tests in watch mode
-pnpm test:coverage           # Run with coverage report
+pnpm test -- --coverage      # Run with coverage report (requires vitest config)
 pnpm test:e2e                # Run E2E tests (headless)
 pnpm test:e2e --headed       # Run E2E tests (visible browser)
 pnpm test:e2e --debug        # Run E2E tests with debugger

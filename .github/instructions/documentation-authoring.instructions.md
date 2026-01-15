@@ -258,6 +258,8 @@ Before committing documentation:
 
 ## Commands
 
+> **Note**: These tools are not included in the project. Install separately if needed.
+
 ```bash
 # Preview markdown locally
 npx markserv README.md

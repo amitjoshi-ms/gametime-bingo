@@ -128,19 +128,24 @@ function clamp<T extends number>(value: T, min: T, max: T): T {
 
 ```typescript
 // ✅ Good: Pure function, returns new state
-function markCell(card: BingoCard, number: number): BingoCard {
-  return {
-    ...card,
-    cells: card.cells.map(cell =>
-      cell.value === number ? { ...cell, marked: true } : cell
+function markNumber(card: BingoCard, calledNumber: number): BingoCard {
+  const newMarked = card.marked.map((row, rowIndex) =>
+    row.map((cellMarked, colIndex) =>
+      cellMarked || card.grid[rowIndex][colIndex] === calledNumber
     )
-  };
+  );
+  return { ...card, marked: newMarked };
 }
 
 // ❌ Bad: Mutates input
-function markCell(card: BingoCard, number: number): void {
-  const cell = card.cells.find(c => c.value === number);
-  if (cell) cell.marked = true;
+function markNumber(card: BingoCard, calledNumber: number): void {
+  for (let row = 0; row < card.grid.length; row++) {
+    for (let col = 0; col < card.grid[row].length; col++) {
+      if (card.grid[row][col] === calledNumber) {
+        card.marked[row][col] = true;
+      }
+    }
+  }
 }
 ```
 
