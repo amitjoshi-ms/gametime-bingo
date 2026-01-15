@@ -199,12 +199,12 @@ function createActions(room: Room): RoomActions {
   const [sendPlayerLeave, onPlayerLeave] = room.makeAction<PlayerLeavePayload>('player-leave');
   const [sendStartGame, onStartGame] = room.makeAction<StartGamePayload>('start-game');
   const [sendCallNumber, onCallNumber] = room.makeAction<CallNumberPayload>('call-number');
-  const [sendNumberCalled, onNumberCalled] = room.makeAction<NumberCalledPayload>('number-called');
-  const [sendDeclareWinner, onDeclareWinner] = room.makeAction<DeclareWinnerPayload>('declare-winner');
+  const [sendNumberCalled, onNumberCalled] = room.makeAction<NumberCalledPayload>('num-called');
+  const [sendDeclareWinner, onDeclareWinner] = room.makeAction<DeclareWinnerPayload>('claim-win');
   const [sendGameOver, onGameOver] = room.makeAction<GameOverPayload>('game-over');
   const [sendPing, onPing] = room.makeAction<PingPayload>('ping');
   const [sendPong, onPong] = room.makeAction<PongPayload>('pong');
-  const [sendHostTransfer, onHostTransfer] = room.makeAction<HostTransferPayload>('host-transfer');
+  const [sendHostTransfer, onHostTransfer] = room.makeAction<HostTransferPayload>('new-host');
   const [sendError, onError] = room.makeAction<ErrorPayload>('error');
   
   return {

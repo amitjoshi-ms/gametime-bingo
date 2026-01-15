@@ -277,7 +277,7 @@
         if (actions) {
           const nextTurnIndex = (session.currentTurnIndex + 1) % session.players.length;
           actions.sendNumberCalled({
-            type: 'number-called',
+            type: 'num-called',
             number,
             calledBy: playerStore.getPlayerId(),
             nextTurnIndex,
