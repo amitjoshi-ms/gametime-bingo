@@ -1,0 +1,53 @@
+# Cloudflare Pages HTTP Headers Configuration
+# This file is automatically copied to dist/ during Vite build and deployed with the site.
+# See: https://developers.cloudflare.com/pages/configuration/headers/
+
+# Security headers for all routes
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  # Content-Security-Policy breakdown:
+  # - default-src 'self': Only allow resources from same origin by default
+  # - script-src 'self' 'unsafe-inline': Vite injects inline scripts for module loading in production
+  # - style-src 'self' 'unsafe-inline': Svelte component styles require unsafe-inline
+  # - img-src 'self' data: blob:: Allow data URIs for inline images and blobs
+  # - font-src 'self': Fonts from same origin only
+  # - connect-src 'self' wss: https:: Trystero P2P uses Nostr relays (wss://) and HTTPS for signaling
+  #   NOTE: Broad wildcards required because Nostr relays are user-configurable and may vary
+  # - worker-src 'self' blob:: Trystero may use blob workers for P2P connections
+  # - manifest-src 'self': PWA manifest from same origin
+  # - base-uri 'self': Prevent base tag injection attacks
+  # - form-action 'self': Restrict form submissions to same origin
+  # - frame-ancestors 'none': Prevent embedding (defense in depth with X-Frame-Options)
+  # - object-src 'none': Prevent plugins/embeds
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss: https:; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+
+# Cache-Control for static assets (Vite hashed files in /assets/)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache-Control for root HTML and manifest files (always fresh)
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.json
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# SVG and image files - 30 day caching (root-level static images rarely change)
+/*.svg
+  Cache-Control: public, max-age=2592000
+
+/*.png
+  Cache-Control: public, max-age=2592000
+
+/*.jpg
+  Cache-Control: public, max-age=2592000
+
+/*.jpeg
+  Cache-Control: public, max-age=2592000
+
+/*.webp
+  Cache-Control: public, max-age=2592000
