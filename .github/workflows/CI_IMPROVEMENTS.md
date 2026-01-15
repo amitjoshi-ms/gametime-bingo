@@ -62,7 +62,7 @@ setup
 - `e2e-tests`: Runs after build completes (depends on build artifacts)
 
 **Previous workflow**: All jobs ran independently, each running `npm ci` (3x redundant installs)  
-**New workflow**: Dependencies installed once, reused via cache (3x faster)
+**New workflow**: Dependencies typically installed once in setup job, with fallback to `npm ci` if cache unavailable
 
 ### 6. Separated Build Job
 - Build now runs as a separate job with artifact upload
@@ -121,7 +121,7 @@ setup
 ### After
 - **Total time**: ~4-6 minutes (40-50% faster on cache hit)
 - **Optimizations**:
-  - 1x `npm ci` (in setup job)
+  - `npm ci` runs primarily in the setup job; downstream jobs usually use cached `node_modules` (with a fallback `npm ci` if the cache is unavailable)
   - Cache hit for node_modules: ~30s vs ~1min (2x faster)
   - Cache hit for Playwright browsers: ~10s vs ~2min (12x faster)
   - Parallel execution of lint, unit tests, and build
