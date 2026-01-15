@@ -86,7 +86,7 @@ Look for:
 
 ### Missing Context
 
-```markdown
+````markdown
 <!-- ❌ Missing context -->
 Run `npm test` to verify.
 
@@ -97,11 +97,11 @@ npm test
 ```
 
 This runs the Vitest unit test suite.
-```
+````
 
 ### Ambiguous Instructions
 
-```markdown
+````markdown
 <!-- ❌ Ambiguous -->
 Update the configuration file.
 
@@ -113,11 +113,11 @@ export default defineConfig({
   plugins: [svelte()],
 });
 ```
-```
+````
 
 ### Inconsistent Formatting
 
-```markdown
+````markdown
 <!-- ❌ Inconsistent -->
 Run these commands:
 - `npm install`
@@ -129,7 +129,7 @@ Run these commands:
 - `npm install`
 - `npm run dev`
 - `npm run build`
-```
+````
 
 ## Comment Types
 

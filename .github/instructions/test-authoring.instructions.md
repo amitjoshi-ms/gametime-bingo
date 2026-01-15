@@ -87,7 +87,7 @@ describe('validateNumber', () => {
     [26, false, 'above maximum'],
     [NaN, false, 'NaN'],
     [Infinity, false, 'Infinity'],
-  ])('validateNumber(%s) should return %s (%s)', (input, expected) => {
+  ])('validateNumber(%s) should return %s (%s)', (input, expected, _description) => {
     expect(validateNumber(input).success).toBe(expected);
   });
 });
@@ -174,6 +174,8 @@ export class HomePage {
 > **Note**: Requires `@axe-core/playwright` package (install separately if needed).
 
 ```typescript
+// Note: @axe-core/playwright is not included by default.
+// Install it separately: npm install -D @axe-core/playwright
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 

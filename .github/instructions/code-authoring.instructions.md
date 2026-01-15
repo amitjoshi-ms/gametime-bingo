@@ -48,13 +48,13 @@ src/
 interface Player {
   readonly id: string;
   name: string;
-  connectionStatus: 'connected' | 'disconnected';
+  connectionStatus: 'connected' | 'reconnecting' | 'disconnected';
   isHost: boolean;
-  joinedAt: Date;
+  joinedAt: number; // Unix epoch milliseconds
 }
 
 // ✅ Good: Union types for state machines
-type GamePhase = 'lobby' | 'playing' | 'finished';
+type GameStatus = 'lobby' | 'playing' | 'completed';
 
 // ❌ Bad: Using any
 const data: any = response;

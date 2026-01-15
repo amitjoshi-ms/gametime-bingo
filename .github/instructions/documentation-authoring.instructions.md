@@ -107,12 +107,10 @@ Check the [API documentation][api-docs] for more information.
 /**
  * Generates a new bingo card with random numbers.
  *
- * @description Creates a 5x5 bingo card for this game implementation:
- * - Uses numbers 1–25 distributed across the grid
- * - The center cell is a free space
+ * @description Creates a 5x5 bingo card with numbers 1-25 randomly distributed.
  *
  * @param seed - Optional seed for deterministic generation (useful for testing)
- * @returns A new BingoCard with a 5x5 grid
+ * @returns A new BingoCard with a 5x5 grid and marked state
  *
  * @example
  * ```typescript
@@ -130,22 +128,23 @@ function generateCard(seed?: number): BingoCard {
 ```typescript
 /**
  * Represents a player in the bingo game.
+ * Card and progress are stored locally, not synced over network.
  */
 interface Player {
-  /** Unique identifier for the player */
+  /** Unique player identifier (Trystero peer ID) */
   readonly id: string;
 
-  /** Display name chosen by the player */
+  /** Display name chosen by player (1-20 chars) */
   name: string;
 
-  /** The player's bingo card */
-  card: BingoCard;
+  /** Current connection state */
+  connectionStatus: 'connected' | 'reconnecting' | 'disconnected';
 
-  /** Number of completed lines (0-12 for standard bingo) */
-  completedLines: number;
-
-  /** Whether this player is the game host */
+  /** Whether this player is the session host */
   isHost: boolean;
+
+  /** Timestamp when player joined (Unix epoch ms) */
+  joinedAt: number;
 }
 ```
 
@@ -153,13 +152,13 @@ interface Player {
 
 ```typescript
 /**
- * Represents the current phase of the game.
+ * Current status of a game session.
  *
  * - `lobby`: Players are joining, game hasn't started
  * - `playing`: Game is in progress, numbers being called
- * - `finished`: Game has ended, winner declared
+ * - `completed`: Game has ended, winner declared
  */
-type GamePhase = 'lobby' | 'playing' | 'finished';
+type GameStatus = 'lobby' | 'playing' | 'completed';
 ```
 
 ## Prompt File Standards
@@ -207,7 +206,7 @@ applyTo: '**/*.ts, **/*.svelte'  # Glob pattern for applicable files
 
 ### Be Concise
 
-```markdown
+````markdown
 <!-- ❌ Verbose -->
 In order to start the development server, you will need to execute the following command in your terminal application.
 
@@ -216,7 +215,7 @@ Start the development server:
 ```bash
 npm run dev
 ```
-```
+````
 
 ### Be Active
 
@@ -230,7 +229,7 @@ Run tests before committing.
 
 ### Be Specific
 
-```markdown
+````markdown
 <!-- ❌ Vague -->
 Make sure the code is good.
 
@@ -239,7 +238,7 @@ Ensure TypeScript compiles without errors:
 ```bash
 npm run check
 ```
-```
+````
 
 ## Documentation Checklist
 
