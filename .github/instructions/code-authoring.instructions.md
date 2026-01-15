@@ -189,17 +189,30 @@ function markNumber(card: BingoCard, calledNumber: number): void {
 
 - Always validate inputs at boundaries (network, user input)
 - Return detailed error information, don't just throw
+- Use explicit error messages for user feedback
 
 ```typescript
-// ✅ Good: Return validation result
-function validateNumber(value: unknown): ValidationResult<number> {
-  if (typeof value !== 'number') {
-    return { success: false, error: 'Expected number' };
+// ✅ Good: Return error string or null
+function validatePlayerName(name: string): string | null {
+  const trimmed = name.trim();
+  if (trimmed.length < 1) {
+    return 'Name cannot be empty';
   }
-  if (value < 1 || value > 25) {
-    return { success: false, error: 'Number must be 1-25' };
+  if (trimmed.length > 20) {
+    return 'Name must be 20 characters or less';
   }
-  return { success: true, value };
+  return null; // Valid
+}
+
+// ✅ Good: Boolean validation with separate error getter
+function isValidNumber(num: number): boolean {
+  return Number.isInteger(num) && num >= 1 && num <= 25;
+}
+
+function getNumberError(num: number): string | null {
+  if (!Number.isInteger(num)) return 'Number must be an integer';
+  if (num < 1 || num > 25) return 'Number must be between 1 and 25';
+  return null;
 }
 ```
 
@@ -210,13 +223,29 @@ function validateNumber(value: unknown): ValidationResult<number> {
 - Define explicit message types for P2P communication
 - Keep payload sizes small (P2P has limits)
 - Use discriminated unions for message handling
+- Include index signatures for Trystero compatibility
 
 ```typescript
-// ✅ Good: Discriminated union for messages
-type GameMessage =
-  | { type: 'number-called'; number: number }
-  | { type: 'player-joined'; player: Player }
-  | { type: 'bingo-claimed'; playerId: string };
+// ✅ Good: Discriminated union for messages with index signature
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+export interface CallNumberPayload {
+  [key: string]: JsonValue;  // Required for Trystero
+  type: 'call-number';
+  playerId: string;
+  number: number;
+}
+
+export interface NumberCalledPayload {
+  [key: string]: JsonValue;
+  type: 'number-called';
+  number: number;
+  calledBy: string;
+  nextTurnIndex: number;
+  timestamp: number;
+}
+
+export type MessagePayload = CallNumberPayload | NumberCalledPayload | /* ... */;
 ```
 
 ### Error Handling
@@ -228,20 +257,25 @@ type GameMessage =
 ### P2P Security
 
 ```typescript
-// ✅ Good: Validate incoming P2P messages
-function handleMessage(raw: unknown): void {
-  const result = validateGameMessage(raw);
-  if (!result.success) {
-    console.warn('Invalid message received:', result.error);
-    return;
-  }
-  // Process validated message
-  processMessage(result.value);
+// ✅ Good: Type guard for message validation
+export function isCallNumber(msg: MessagePayload): msg is CallNumberPayload {
+  return msg.type === 'call-number';
 }
 
-// ✅ Good: Type guard for message validation
-function isNumberCalledMessage(msg: GameMessage): msg is { type: 'number-called'; number: number } {
-  return msg.type === 'number-called';
+// ✅ Good: Validate incoming P2P messages
+function handleMessage(raw: MessagePayload): void {
+  // Type guards provide runtime validation
+  if (isCallNumber(raw)) {
+    // TypeScript knows this is CallNumberPayload now
+    if (!isValidNumber(raw.number)) {
+      console.warn('Invalid number in message:', raw.number);
+      return;
+    }
+    processCallNumber(raw);
+  } else if (isNumberCalled(raw)) {
+    processNumberCalled(raw);
+  }
+  // ... handle other message types
 }
 ```
 
@@ -251,6 +285,7 @@ function isNumberCalledMessage(msg: GameMessage): msg is { type: 'number-called'
 - Never trust data received from peers
 - Log suspicious messages for debugging
 - Validate message structure and data ranges
+- Check bounds on arrays and numbers (e.g., number must be 1-25)
 
 ## SPA Architecture Guidelines
 
@@ -312,24 +347,29 @@ window.location.hash = roomId;
 
 **localStorage Security**:
 ```typescript
-// ✅ Good: Validate data from localStorage
-function loadGameState(): GameSession | null {
+// ✅ Good: Validate data from localStorage (from src/lib/utils/storage.ts)
+export function loadState(): PersistedState | null {
   try {
-    const saved = localStorage.getItem('gameState');
-    if (!saved) return null;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
     
-    const parsed = JSON.parse(saved);
-    const result = validateGameSession(parsed);
+    const state = JSON.parse(raw) as PersistedState;
     
-    if (!result.success) {
-      console.warn('Invalid saved game state:', result.error);
-      localStorage.removeItem('gameState'); // Clear corrupted data
+    // Validate required fields
+    if (!state.playerId || !state.playerName) {
       return null;
     }
     
-    return result.value;
+    // Check expiration (1 hour)
+    const ONE_HOUR = 60 * 60 * 1000;
+    if (Date.now() - state.savedAt > ONE_HOUR) {
+      clearState();
+      return null;
+    }
+    
+    return state;
   } catch (error) {
-    console.error('Failed to load game state:', error);
+    console.warn('Failed to load state from localStorage:', error);
     return null;
   }
 }

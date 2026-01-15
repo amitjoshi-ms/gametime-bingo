@@ -80,16 +80,40 @@ describe('markNumber', () => {
 
 ```typescript
 // ✅ Good: Test edge cases and boundaries
-describe('validateNumber', () => {
+describe('isValidNumber', () => {
+  it('should return true for numbers 1-25', () => {
+    for (let i = 1; i <= 25; i++) {
+      expect(isValidNumber(i)).toBe(true);
+    }
+  });
+
+  it('should return false for 0', () => {
+    expect(isValidNumber(0)).toBe(false);
+  });
+
+  it('should return false for numbers greater than 25', () => {
+    expect(isValidNumber(26)).toBe(false);
+    expect(isValidNumber(100)).toBe(false);
+  });
+
+  it('should return false for non-integers', () => {
+    expect(isValidNumber(1.5)).toBe(false);
+    expect(isValidNumber(NaN)).toBe(false);
+  });
+});
+```
+
+**Alternative: Using `it.each` for parameterized tests**:
+```typescript
+describe('isValidNumber', () => {
   it.each([
     [0, false, 'below minimum'],
     [1, true, 'minimum valid'],
     [25, true, 'maximum valid'],
     [26, false, 'above maximum'],
     [NaN, false, 'NaN'],
-    [Infinity, false, 'Infinity'],
-  ])('validateNumber(%s) should return %s (%s)', (input, expected, _description) => {
-    expect(validateNumber(input).success).toBe(expected);
+  ])('isValidNumber(%s) should return %s (%s)', (input, expected) => {
+    expect(isValidNumber(input)).toBe(expected);
   });
 });
 ```
