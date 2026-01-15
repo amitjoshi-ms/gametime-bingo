@@ -52,7 +52,7 @@ jobs:
           echo "**Target Tag:** \`$TAG\`" >> $GITHUB_STEP_SUMMARY
           echo "**Target Commit:** \`$(git rev-parse --short $TAG)\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Current Release Branch:** \`$(git rev-parse --short release)\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Current Release Branch:** \`$(git rev-parse --short origin/release)\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Unlock release branch
         run: |

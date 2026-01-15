@@ -223,7 +223,7 @@ ci: update workflows
 The changelog generation now uses `git describe --tags --match "v*"` to find the latest semantic version tag. This means:
 
 1. **Old date-based tags** (e.g., `26.114.0`) are ignored by the changelog generator
-2. **First release** after merge will use the first commit as the baseline if no `v*` tags exist
+2. **First release** after merge will use `HEAD~10` as the baseline if no `v*` tags exist, falling back to the first commit only if `HEAD~10` is not available
 3. **Rollback tags** use the format `rollback/v1.0.0/20260115-143022` for better organization
 
 If you need to reference old releases, they remain accessible via direct tag lookup but won't appear in changelog comparisons.
