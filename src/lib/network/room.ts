@@ -201,7 +201,7 @@ export function isInRoom(): boolean {
 
 /**
  * Stops tracker reconnection attempts.
- * Call this when the game starts to stop looking for new peers.
+ * Call this when the game starts to stop reconnecting to trackers to discover new peers.
  */
 export function stopPeerDiscovery(): void {
   pauseRelayReconnection();

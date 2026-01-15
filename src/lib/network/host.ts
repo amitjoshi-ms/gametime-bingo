@@ -241,8 +241,8 @@ export function handleCallNumber(
     hostSession = callNumber(hostSession, payload.number);
     
     // Advance turn
-    const nextTurnIndex = (hostSession.currentTurnIndex + 1) % hostSession.players.length;
     hostSession = advanceTurn(hostSession);
+    const nextTurnIndex = hostSession.currentTurnIndex;
     
     // Sync to game store for host UI update
     gameStore.setSession(hostSession);

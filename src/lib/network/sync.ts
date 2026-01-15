@@ -186,6 +186,7 @@ export function sendPlayerJoin(playerId: string, playerName: string): void {
 export function sendCallNumber(playerId: string, number: number): void {
   const actions = getActions();
   if (!actions) {
+    console.warn('[P2P] Cannot send call-number: no actions available');
     return;
   }
 

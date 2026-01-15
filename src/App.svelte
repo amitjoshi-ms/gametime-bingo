@@ -12,7 +12,7 @@
   import { createRoom, joinRoom, leaveRoom, getActions, onPeerJoin, getConnectedPeers, stopPeerDiscovery } from '$lib/network/room';
   import { setHostSession, registerHostHandlers, broadcastSyncState, getHostSession } from '$lib/network/host';
   import { registerSyncHandlers, sendPlayerJoin, sendCallNumber, clearCallbacks } from '$lib/network/sync';
-  import { createSession, addPlayer, startGame as startGameSession, callNumber as callSessionNumber } from '$lib/game/session';
+  import { createSession, addPlayer, startGame as startGameSession, callNumber as callSessionNumber, advanceTurn as advanceSessionTurn } from '$lib/game/session';
   import * as gameStore from '$lib/stores/game.svelte';
   import * as playerStore from '$lib/stores/player.svelte';
   import { saveState, loadState, clearState, type PersistedState } from '$lib/utils/storage';
@@ -185,7 +185,7 @@
       
       // Register callback to send player-join when peer connection is established
       // WebRTC connections are asynchronous, so we must wait for the peer connection
-      onPeerJoin((peerId) => {
+      onPeerJoin((_peerId) => {
         // Send player-join message to host once connected
         sendPlayerJoin(playerId, name);
       });
@@ -288,11 +288,9 @@
         // Add the called number
         session = callSessionNumber(session, number);
         
-        // Calculate next turn before advancing
-        const nextTurnIndex = (session.currentTurnIndex + 1) % session.players.length;
-        
-        // Advance turn in session
-        session = { ...session, currentTurnIndex: nextTurnIndex };
+        // Advance turn using the helper function
+        session = advanceSessionTurn(session);
+        const nextTurnIndex = session.currentTurnIndex;
         
         // Update host session state
         setHostSession(session);
