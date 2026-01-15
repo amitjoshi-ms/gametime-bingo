@@ -354,10 +354,10 @@ npx playwright test --project=chromium  # Run E2E in specific browser
 **Run Specific Tests**:
 ```bash
 # Run single unit test file
-npm test tests/unit/game/card.test.ts
+npm test -- tests/unit/game/card.test.ts
 
 # Run tests matching a pattern
-npm test -- --grep "should generate"
+npm test -- -t "should generate"
 
 # Run single E2E test file
 npx playwright test tests/e2e/home.spec.ts
