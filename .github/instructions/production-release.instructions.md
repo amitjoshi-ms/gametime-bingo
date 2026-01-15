@@ -8,6 +8,8 @@ applyTo: '.github/workflows/*.yml, .github/prompts/release*.md'
 Reference for release standards, rollback, and troubleshooting.
 
 > **For release execution**: See `.github/prompts/release.latest.prompt.md`
+> **For code quality**: See `.github/instructions/code-authoring.instructions.md`
+> **For testing**: See `.github/instructions/test-authoring.instructions.md`
 
 ## Release Philosophy
 
@@ -30,6 +32,26 @@ After deployment completes, verify:
 - [ ] P2P connection establishes
 - [ ] Check build artifacts were created
 - [ ] Verify GitHub release was created with changelog
+
+## Pre-Release Validation
+
+Before triggering a release, ensure:
+
+- [ ] All CI checks pass (lint, type check, tests)
+- [ ] Code review is approved
+- [ ] Manual testing completed on staging/local
+- [ ] No known security vulnerabilities
+- [ ] Breaking changes are documented (if any)
+
+Run locally to verify:
+```bash
+npm ci                # Clean install
+npm run check         # Type checking
+npm run lint          # Linting
+npm test              # Unit tests
+npm run test:e2e      # E2E tests
+npm run build         # Production build
+```
 
 ## Rollback Procedures
 

@@ -313,6 +313,8 @@ Before submitting tests:
 - [ ] Mocks are cleaned up after tests
 - [ ] E2E tests use accessible selectors (role, label)
 
+> **For code review**: See `.github/instructions/code-review.instructions.md` for review standards
+
 ## Commands
 
 ```bash

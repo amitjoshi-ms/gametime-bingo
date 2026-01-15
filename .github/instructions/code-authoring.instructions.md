@@ -102,6 +102,27 @@ function clamp(value: number, min: number, max: number): number {
 - `$effect()`: Runs side effects when dependencies change (replaces `$:` statements with side effects)
 - `$props()`: Receives component props (see Component Props section)
 
+**Performance Tips**:
+```svelte
+<script lang="ts">
+  // ✅ Good: Use $derived for computations
+  let items = $state([1, 2, 3, 4, 5]);
+  let sum = $derived(items.reduce((a, b) => a + b, 0));
+  
+  // ✅ Good: Cleanup in $effect
+  $effect(() => {
+    const timer = setInterval(() => console.log('tick'), 1000);
+    return () => clearInterval(timer); // Cleanup function
+  });
+  
+  // ❌ Bad: Using $effect for computations (use $derived instead)
+  let doubled = $state(0);
+  $effect(() => {
+    doubled = count * 2; // Should use $derived
+  });
+</script>
+```
+
 ### Component Props
 
 ```svelte
@@ -224,6 +245,13 @@ function isNumberCalledMessage(msg: GameMessage): msg is { type: 'number-called'
 }
 ```
 
+**Security Best Practices**:
+- Always validate P2P messages before processing
+- Use TypeScript type guards for runtime validation
+- Never trust data received from peers
+- Log suspicious messages for debugging
+- Validate message structure and data ranges
+
 ## SPA Architecture Guidelines
 
 ### Client-Side State
@@ -282,6 +310,35 @@ window.location.hash = roomId;
 - Show clear connection status to users
 - Queue actions during brief disconnections
 
+**localStorage Security**:
+```typescript
+// ✅ Good: Validate data from localStorage
+function loadGameState(): GameSession | null {
+  try {
+    const saved = localStorage.getItem('gameState');
+    if (!saved) return null;
+    
+    const parsed = JSON.parse(saved);
+    const result = validateGameSession(parsed);
+    
+    if (!result.success) {
+      console.warn('Invalid saved game state:', result.error);
+      localStorage.removeItem('gameState'); // Clear corrupted data
+      return null;
+    }
+    
+    return result.value;
+  } catch (error) {
+    console.error('Failed to load game state:', error);
+    return null;
+  }
+}
+
+// ❌ Bad: Trusting localStorage data without validation
+const saved = localStorage.getItem('gameState');
+const gameState = JSON.parse(saved!); // Unsafe!
+```
+
 ## Code Quality Checklist
 
 Before committing code:
@@ -292,9 +349,14 @@ Before committing code:
 - [ ] E2E tests pass if UI changes made (`npm run test:e2e`)
 - [ ] No `any` types (use `unknown` if needed)
 - [ ] Functions have explicit return types
-- [ ] Components use Svelte 5 runes
+- [ ] Components use Svelte 5 runes (no legacy `$:`)
 - [ ] Game logic is pure and testable
-- [ ] Network messages are typed
+- [ ] Network messages are typed and validated
+- [ ] Error handling is present and comprehensive
+- [ ] No hardcoded secrets or credentials
+
+> **Related**: See `.github/instructions/test-authoring.instructions.md` for testing guidelines
+> **Related**: See `.github/instructions/code-review.instructions.md` for review standards
 
 ## Commands
 
