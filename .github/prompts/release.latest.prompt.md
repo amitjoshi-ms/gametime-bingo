@@ -4,8 +4,7 @@
 
 This prompt guides the release of changes from `main` to the `release` branch for Cloudflare Pages deployment.
 
-> **Reference**: For release standards, prerequisites, and rollback procedures, see:
-> `.github/instructions/production-release.instructions.md`
+> **For rollback & troubleshooting**: See `.github/instructions/production-release.instructions.md`
 
 ## How the Release Workflow Works
 
