@@ -89,7 +89,8 @@ jobs:
       - name: Create rollback tag
         run: |
           TAG="${{ github.event.inputs.tag }}"
-          ROLLBACK_TAG="${TAG}-rollback-$(date +%Y%m%d-%H%M%S)"
+          # Use slash-based format for better organization: rollback/v1.0.0/20260115-143022
+          ROLLBACK_TAG="rollback/${TAG}/$(date +%Y%m%d-%H%M%S)"
           
           git tag "$ROLLBACK_TAG" -m "Rollback to $TAG"
           git push origin "$ROLLBACK_TAG"

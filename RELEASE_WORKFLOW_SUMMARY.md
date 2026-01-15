@@ -174,11 +174,14 @@ Since this is a workflow change, testing in a live environment is recommended:
 
 Before first use, configure the following repository secret:
 
-1. **PRODUCTION_URL** - Your production site URL
+1. **PRODUCTION_URL** - Your production site URL (required for deployment verification)
    - Example: `https://gametime-bingo.pages.dev`
    - Settings → Secrets and variables → Actions → New repository secret
    - Name: `PRODUCTION_URL`
    - Value: Your actual production URL
+
+   > **Note**: This secret should also be documented in the main README.md for new contributors.
+   > Without this secret, the post-deployment verification will fail with a helpful error message.
 
 Without this secret, the post-deployment verification will fail with a helpful error message.
 
@@ -216,6 +219,16 @@ ci: update workflows
 - Tag format changed from `yy.mdd.rev` to `vX.Y.Z`
 - Workflow inputs changed (added `version_bump` parameter)
 - Requires conventional commit format for optimal changelog generation
+
+### Migration from Old Tag Format
+
+The changelog generation now uses `git describe --tags --match "v*"` to find the latest semantic version tag. This means:
+
+1. **Old date-based tags** (e.g., `26.114.0`) are ignored by the changelog generator
+2. **First release** after merge will use the first commit as the baseline if no `v*` tags exist
+3. **Rollback tags** use the format `rollback/v1.0.0/20260115-143022` for better organization
+
+If you need to reference old releases, they remain accessible via direct tag lookup but won't appear in changelog comparisons.
 
 ## Future Enhancements
 
