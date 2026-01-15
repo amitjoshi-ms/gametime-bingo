@@ -34,7 +34,7 @@ The release workflow automates deploying code from `main` to production with qua
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  1. Determine version (date-based versioning)                   │
-│     - Format: YY.DDD.REV (year, day of year, revision)          │
+│     - Format: YY.MDD.REV (year, month+day, revision)            │
 │     - Auto-calculated from current date                         │
 │     - Revision increments for same-day releases                 │
 └─────────────────────────┬───────────────────────────────────────┘
@@ -67,7 +67,7 @@ The release workflow automates deploying code from `main` to production with qua
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  6. Create release tag and GitHub release                       │
-│     - Format: YY.DDD.REV (date-based versioning)                │
+│     - Format: YY.MDD.REV (date-based versioning)                │
 │     - Create GitHub release with changelog                      │
 │     - Attach release notes                                      │
 └─────────────────────────┬───────────────────────────────────────┘
@@ -155,12 +155,14 @@ The workflow will:
 If automated workflow fails, perform manual release:
 
 ```powershell
-# 1. Determine new version (date-based: YY.DDD.REV)
+# 1. Determine new version (date-based: YY.MDD.REV)
 $year = (Get-Date).ToString("yy")
-$dayOfYear = (Get-Date).DayOfYear
+$month = (Get-Date).Month
+$day = (Get-Date).ToString("dd")
+$mdd = "$month$day"
 
 # Find existing tags for today to determine revision
-$tagPrefix = "$year.$dayOfYear."
+$tagPrefix = "$year.$mdd."
 $existingTags = git tag -l "$tagPrefix*"
 $rev = 0
 if ($existingTags) {
@@ -168,7 +170,7 @@ if ($existingTags) {
     $rev = $maxRev.Maximum + 1
 }
 
-$newVersion = "$year.$dayOfYear.$rev"
+$newVersion = "$year.$mdd.$rev"
 $newTag = $newVersion
 
 Write-Host "New version: $newVersion"
@@ -207,21 +209,23 @@ gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=tr
 
 Versions are automatically calculated based on the current date:
 
-- **Format**: `YY.DDD.REV`
+- **Format**: `YY.MDD.REV`
   - `YY` = 2-digit year (e.g., 26 for 2026)
-  - `DDD` = Day of year (1-366)
+  - `M` = Month (1-12, no leading zero)
+  - `DD` = Day of month (01-31, with leading zero)
   - `REV` = Revision number (0-based, increments for same-day releases)
 
 **Examples:**
-- `26.14.0` - First release on January 14, 2026
-- `26.14.1` - Second release on January 14, 2026
-- `26.15.0` - First release on January 15, 2026
-- `26.200.0` - First release on July 18, 2026
+- `26.101.0` - First release on January 1, 2026
+- `26.111.0` - First release on January 11, 2026
+- `26.111.1` - Second release on January 11, 2026
+- `26.1101.0` - First release on November 1, 2026
+- `26.1111.0` - First release on November 11, 2026
 
 **Benefits:**
 - No manual version selection needed
 - Releases are naturally ordered chronologically
-- Easy to identify when a release was made
+- Easy to identify when a release was made (month and day are readable)
 - Supports multiple releases per day via revision number
 
 ## Conventional Commit Format
@@ -252,16 +256,18 @@ Common types:
 ## Tag Format
 
 Tags use date-based versioning without a prefix:
-- Format: `YY.DDD.REV` (e.g., 26.14.0, 26.14.1, 26.200.0)
+- Format: `YY.MDD.REV` (e.g., 26.101.0, 26.111.0, 26.1101.0)
 - YY = 2-digit year
-- DDD = Day of year (1-366)
+- M = Month (1-12, no leading zero)
+- DD = Day of month (01-31, with leading zero)
 - REV = Revision for same-day releases (starts at 0)
 
 Examples:
-- `26.1.0` - First release on January 1, 2026
-- `26.14.0` - First release on January 14, 2026
-- `26.14.1` - Second release on January 14, 2026
-- `26.365.0` - First release on December 31, 2026
+- `26.101.0` - First release on January 1, 2026
+- `26.111.0` - First release on January 11, 2026
+- `26.111.1` - Second release on January 11, 2026
+- `26.1101.0` - First release on November 1, 2026
+- `26.1111.0` - First release on November 11, 2026
 
 ## Cloudflare Pages
 

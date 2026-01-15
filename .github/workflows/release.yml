@@ -82,13 +82,15 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          # Date-based versioning: YY.DDD.REV
-          # YY = 2-digit year, DDD = day of year (1-366), REV = revision (0-based)
+          # Date-based versioning: YY.MDD.REV
+          # YY = 2-digit year, M = month (1-12), DD = day (01-31), REV = revision (0-based)
           YEAR=$(date -u +"%y")
-          DAY=$(date -u +"%-j")  # Day of year without leading zeros
+          MONTH=$(date -u +"%-m")  # Month without leading zero
+          DAY=$(date -u +"%d")    # Day with leading zero
+          MDD="${MONTH}${DAY}"
           
           # Find existing tags for today to determine revision
-          TAG_PREFIX="${YEAR}.${DAY}."
+          TAG_PREFIX="${YEAR}.${MDD}."
           echo "Looking for existing tags with prefix: $TAG_PREFIX"
           
           # Get the highest revision for today's date
@@ -100,7 +102,7 @@ jobs:
             REV=$((LATEST_REV + 1))
           fi
           
-          NEW_VERSION="${YEAR}.${DAY}.${REV}"
+          NEW_VERSION="${YEAR}.${MDD}.${REV}"
           TAG_NAME="${NEW_VERSION}"
           
           echo "New version: $NEW_VERSION"

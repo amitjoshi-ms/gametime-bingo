@@ -16,7 +16,7 @@ The release workflow has been completely revamped to address all requirements fr
 - Basic branch management
 
 **New Workflow:**
-- ✅ Date-based versioning (e.g., `26.14.0`) - auto-calculated
+- ✅ Date-based versioning (e.g., `26.114.0`) - auto-calculated
 - ✅ Pre-release validation job (lint, type check, tests, build)
 - ✅ Automatic changelog generation from conventional commits
 - ✅ Build artifact creation and upload to GitHub releases
@@ -35,7 +35,7 @@ The release workflow has been completely revamped to address all requirements fr
    - Upload build artifacts
 
 2. **release** - Main release process
-   - Determine new date-based version (YY.DDD.REV)
+   - Determine new date-based version (YY.MDD.REV)
    - Generate changelog from commits
    - Unlock release branch
    - Fast-forward merge from main
@@ -73,7 +73,7 @@ The release workflow has been completely revamped to address all requirements fr
   - Consistent workflow execution
 
 - ✅ **Version numbers follow date-based versioning**
-  - Format: `YY.DDD.REV` (26.14.0)
+  - Format: `YY.MDD.REV` (26.114.0)
   - Auto-calculated from current date
   - Revision increments for same-day releases
 
@@ -149,9 +149,9 @@ Before first use, configure the following repository secret:
 
 The first release after merging this PR will use date-based versioning:
 
-1. Version is auto-calculated as `YY.DDD.REV`
-2. Example: If merged on January 14, 2026, first release will be `26.14.0`
-3. Subsequent releases on the same day will be `26.14.1`, `26.14.2`, etc.
+1. Version is auto-calculated as `YY.MDD.REV`
+2. Example: If merged on January 14, 2026, first release will be `26.114.0`
+3. Subsequent releases on the same day will be `26.114.1`, `26.114.2`, etc.
 
 ### Conventional Commits
 
@@ -180,12 +180,13 @@ ci: update workflows
 
 ### Tag Format
 
-Tags use date-based versioning: `YY.DDD.REV`
+Tags use date-based versioning: `YY.MDD.REV`
 - `YY` = 2-digit year
-- `DDD` = Day of year (1-366)
+- `M` = Month (1-12, no leading zero)
+- `DD` = Day of month (01-31, with leading zero)
 - `REV` = Revision for same-day releases (starts at 0)
 
-Examples: `26.14.0`, `26.14.1`, `26.200.0`
+Examples: `26.101.0`, `26.114.0`, `26.1101.0`, `26.1111.0`
 
 ## Future Enhancements
 
