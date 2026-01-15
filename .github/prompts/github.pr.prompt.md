@@ -170,9 +170,10 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 4. **RUN** E2E tests (Chromium-only for fast local verification):
    ```bash
-   npm run build && npx playwright test --project=chromium
+   npm run build && npx playwright test --project=chromium --reporter=list
    ```
    - This runs only `chromium` project to keep pre-push checks fast; full cross-browser E2E runs in CI
+   - Use `--reporter=list` to avoid interactive HTML report that blocks automation
    - If fails: Fix failing E2E tests before proceeding
 
 5. **PERFORM** local code review:
@@ -194,7 +195,7 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 **Quick command to run all checks:**
 ```bash
-npm run lint && npm run check && npm run test && npm run build && npx playwright test --project=chromium
+npm run lint && npm run check && npm run test && npm run build && npx playwright test --project=chromium --reporter=list
 ```
 
 ## Workflow: Fix CI Failures
@@ -225,7 +226,7 @@ npm run lint && npm run check && npm run test && npm run build && npx playwright
    - `npm run check` for TypeScript type errors
    - `npm run test` for unit test failures
    - `npm run build` for build errors
-   - `npm run build && npx playwright test --project=chromium` for E2E failures
+   - `npm run build && npx playwright test --project=chromium --reporter=list` for E2E failures
 8. **IF** local check(s) **fail**:
    - Analyze the new error output
    - Go back to step 6 to refine the fix
@@ -257,7 +258,7 @@ npm run lint && npm run check && npm run test && npm run build && npx playwright
    e. **RESOLVE** the comment thread (mark as resolved) if the fix is complete
 5. **RUN** relevant checks locally to verify no regressions:
    - `npm run lint && npm run check && npm run test`
-   - For UI changes: `npm run build && npx playwright test --project=chromium`
+   - For UI changes: `npm run build && npx playwright test --project=chromium --reporter=list`
 6. **STAGE** only the files you modified: `git add <file1> <file2> ...`
    - Alternatively, use `git add -p` for interactive staging
    - Verify with `git diff --staged` that only intended changes are staged
@@ -305,7 +306,7 @@ These commands assume dependencies are installed (run `npm ci` first to install 
 | Lint only | `npm run lint` |
 | Type check only | `npm run check` |
 | Unit tests only | `npm run test` |
-| E2E tests | `npm run build && npx playwright test --project=chromium` |
+| E2E tests | `npm run build && npx playwright test --project=chromium --reporter=list` |
 | View failed run | `gh run view <id> --log-failed` |
 | Re-run checks | `gh run rerun <id> --failed` |
 | Push changes | `git add <files> && git commit -m "msg" && git push` |
