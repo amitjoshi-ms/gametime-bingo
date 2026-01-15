@@ -7,7 +7,7 @@ This document describes the improvements made to the CI workflow in `.github/wor
 The CI workflow has been revamped to improve build reliability, speed, and coverage with the following key improvements:
 
 ### 1. Updated Node.js Version (v20 → v22)
-- **Reason**: The `@waku` dependencies in the project require Node.js v22
+- **Reason**: The `@waku` dependencies in the project require Node.js 22 or higher (`engines.node >= 22`)
 - **Impact**: Eliminates engine compatibility warnings and ensures proper dependency installation
 
 ### 2. Security Fix for actions/download-artifact
