@@ -100,7 +100,7 @@ function handleSyncState(payload: SyncStatePayload): void {
 }
 
 /**
- * Processes a number-called message.
+ * Processes a num-called message.
  */
 function handleNumberCalled(payload: NumberCalledPayload): void {
   // Update game store
@@ -150,7 +150,7 @@ function handleError(payload: ErrorPayload): void {
 }
 
 /**
- * Processes a host-transfer message.
+ * Processes a new-host message.
  */
 function handleHostTransfer(payload: HostTransferPayload): void {
   gameStore.transferHost(payload.newHostId);
@@ -189,7 +189,7 @@ export function sendCallNumber(playerId: string, number: number): void {
 }
 
 /**
- * Sends a declare-winner message to the host.
+ * Sends a claim-win message to the host.
  */
 export function sendDeclareWinner(): void {
   const actions = getActions();
@@ -205,7 +205,7 @@ export function sendDeclareWinner(): void {
   }));
 
   actions.sendDeclareWinner({
-    type: 'declare-winner',
+    type: 'claim-win',
     playerId,
     completedLineCount: card.completedLines.length,
     completedLines: serializedLines,
