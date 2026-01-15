@@ -65,6 +65,7 @@ jobs:
 
       - name: Restore node_modules cache
         uses: actions/cache@v4
+        id: cache-node-modules
         with:
           path: node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
@@ -97,6 +98,7 @@ jobs:
 
       - name: Restore node_modules cache
         uses: actions/cache@v4
+        id: cache-node-modules
         with:
           path: node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
@@ -126,6 +128,7 @@ jobs:
 
       - name: Restore node_modules cache
         uses: actions/cache@v4
+        id: cache-node-modules
         with:
           path: node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
@@ -162,6 +165,7 @@ jobs:
 
       - name: Restore node_modules cache
         uses: actions/cache@v4
+        id: cache-node-modules
         with:
           path: node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
