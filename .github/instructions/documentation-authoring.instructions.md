@@ -107,20 +107,17 @@ Check the [API documentation][api-docs] for more information.
 /**
  * Generates a new bingo card with random numbers.
  *
- * @description Creates a 5x5 bingo card following standard BINGO rules:
- * - B column: 1-15
- * - I column: 16-30
- * - N column: 31-45 (with free space in center)
- * - G column: 46-60
- * - O column: 61-75
+ * @description Creates a 5x5 bingo card for this game implementation:
+ * - Uses numbers 1–25 distributed across the grid
+ * - The center cell is a free space
  *
  * @param seed - Optional seed for deterministic generation (useful for testing)
- * @returns A new BingoCard with 25 cells
+ * @returns A new BingoCard with a 5x5 grid
  *
  * @example
  * ```typescript
  * const card = generateCard();
- * console.log(card.cells.length); // 25
+ * console.log(card.grid.flat().length); // 25
  * ```
  */
 function generateCard(seed?: number): BingoCard {

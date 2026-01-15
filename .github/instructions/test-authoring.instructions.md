@@ -83,8 +83,8 @@ describe('validateNumber', () => {
   it.each([
     [0, false, 'below minimum'],
     [1, true, 'minimum valid'],
-    [75, true, 'maximum valid'],
-    [76, false, 'above maximum'],
+    [25, true, 'maximum valid'],
+    [26, false, 'above maximum'],
     [NaN, false, 'NaN'],
     [Infinity, false, 'Infinity'],
   ])('validateNumber(%s) should return %s (%s)', (input, expected) => {

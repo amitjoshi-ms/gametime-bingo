@@ -48,8 +48,9 @@ src/
 interface Player {
   readonly id: string;
   name: string;
-  card: BingoCard;
-  completedLines: number;
+  connectionStatus: 'connected' | 'disconnected';
+  isHost: boolean;
+  joinedAt: Date;
 }
 
 // ✅ Good: Union types for state machines
