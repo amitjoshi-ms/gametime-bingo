@@ -176,7 +176,15 @@ jobs:
 
       - name: Verify production site
         run: |
-          PROD_URL="${{ secrets.PRODUCTION_URL || 'https://gametime-bingo.pages.dev' }}"
+          # Use secret PRODUCTION_URL if set, otherwise fail with helpful message
+          if [ -z "${{ secrets.PRODUCTION_URL }}" ]; then
+            echo "::error::PRODUCTION_URL secret is not configured"
+            echo "::error::Please set PRODUCTION_URL in repository secrets"
+            echo "::error::Example: https://your-site.pages.dev"
+            exit 1
+          fi
+          
+          PROD_URL="${{ secrets.PRODUCTION_URL }}"
           
           echo "Verifying production site at: $PROD_URL"
           

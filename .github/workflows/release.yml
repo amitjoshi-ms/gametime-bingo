@@ -89,6 +89,13 @@ jobs:
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "Current version: $CURRENT_VERSION"
           
+          # Validate version format (must be X.Y.Z)
+          if ! echo "$CURRENT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid version format in package.json: $CURRENT_VERSION"
+            echo "::error::Version must be in format X.Y.Z (e.g., 1.0.0)"
+            exit 1
+          fi
+          
           # Parse version components
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
           
@@ -120,14 +127,14 @@ jobs:
 
       - name: Update package.json version
         run: |
-          npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
           git add package.json package-lock.json
 
       - name: Generate changelog
         id: changelog
         run: |
-          # Get the latest tag or first commit if no tags exist
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          # Get the latest tag or use HEAD~10 for first release
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-parse HEAD~10 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Latest tag/commit: $LATEST_TAG"
           
           # Generate changelog from commits
@@ -138,17 +145,32 @@ jobs:
           
           # Group commits by type (feat, fix, chore, etc.)
           echo "## 🚀 Features" >> CHANGELOG_TEMP.md
-          git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^feat" | sed 's/^/- /' >> CHANGELOG_TEMP.md || echo "No new features" >> CHANGELOG_TEMP.md
+          FEATURES=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^feat" 2>/dev/null || true)
+          if [ -n "$FEATURES" ]; then
+            echo "$FEATURES" | sed 's/^/- /' >> CHANGELOG_TEMP.md
+          else
+            echo "No new features" >> CHANGELOG_TEMP.md
+          fi
           echo "" >> CHANGELOG_TEMP.md
           echo "" >> CHANGELOG_TEMP.md
           
           echo "## 🐛 Bug Fixes" >> CHANGELOG_TEMP.md
-          git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^fix" | sed 's/^/- /' >> CHANGELOG_TEMP.md || echo "No bug fixes" >> CHANGELOG_TEMP.md
+          FIXES=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^fix" 2>/dev/null || true)
+          if [ -n "$FIXES" ]; then
+            echo "$FIXES" | sed 's/^/- /' >> CHANGELOG_TEMP.md
+          else
+            echo "No bug fixes" >> CHANGELOG_TEMP.md
+          fi
           echo "" >> CHANGELOG_TEMP.md
           echo "" >> CHANGELOG_TEMP.md
           
           echo "## 📝 Other Changes" >> CHANGELOG_TEMP.md
-          git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^chore\|^docs\|^refactor\|^test\|^ci" | sed 's/^/- /' >> CHANGELOG_TEMP.md || echo "No other changes" >> CHANGELOG_TEMP.md
+          OTHER=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^chore\|^docs\|^refactor\|^test\|^ci" 2>/dev/null || true)
+          if [ -n "$OTHER" ]; then
+            echo "$OTHER" | sed 's/^/- /' >> CHANGELOG_TEMP.md
+          else
+            echo "No other changes" >> CHANGELOG_TEMP.md
+          fi
           echo "" >> CHANGELOG_TEMP.md
           
           # Store changelog for release notes
@@ -313,8 +335,15 @@ jobs:
 
       - name: Verify production site
         run: |
-          # Note: Update this URL to your actual production URL
-          PROD_URL="${{ secrets.PRODUCTION_URL || 'https://gametime-bingo.pages.dev' }}"
+          # Use secret PRODUCTION_URL if set, otherwise fail with helpful message
+          if [ -z "${{ secrets.PRODUCTION_URL }}" ]; then
+            echo "::error::PRODUCTION_URL secret is not configured"
+            echo "::error::Please set PRODUCTION_URL in repository secrets"
+            echo "::error::Example: https://your-site.pages.dev"
+            exit 1
+          fi
+          
+          PROD_URL="${{ secrets.PRODUCTION_URL }}"
           
           echo "Verifying production site at: $PROD_URL"
           
