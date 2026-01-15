@@ -14,17 +14,19 @@ test.describe('Join Game Validation', () => {
     await expect(dialog).toBeVisible();
   });
 
-  test('should show error for non-existent room code', async ({ page }) => {
+  test('should navigate to lobby for any valid room code (P2P has no pre-validation)', async ({ page }) => {
+    // Note: With P2P/WebRTC, there's no server-side room validation.
+    // Joining a "room" connects to a signaling topic. If no host exists,
+    // the player will wait in the lobby until connection times out.
     await page.goto('/');
     await page.getByRole('button', { name: 'Join Game' }).click();
     
     const dialog = page.locator('dialog[open]');
-    await dialog.getByPlaceholder('ABC123').fill('ZZZZZ9'); // Valid format but doesn't exist
+    await dialog.getByPlaceholder('ABC123').fill('ZZZZZ9'); // Valid format, room may not exist
     await dialog.getByPlaceholder('Enter your name').fill('TestPlayer');
     await dialog.getByRole('button', { name: 'Join' }).click();
     
-    // Dialog should remain visible or show an error (connection timeout)
-    // Wait for potential network timeout then verify we didn't navigate to lobby
-    await expect(page.locator('.lobby__code')).not.toBeVisible({ timeout: 5000 });
+    // Should navigate to lobby (P2P room connection is initiated regardless of room existence)
+    await expect(page.locator('.lobby__code')).toBeVisible({ timeout: 5000 });
   });
 });
