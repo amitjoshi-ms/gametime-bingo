@@ -130,20 +130,22 @@ You are an automated PR management agent. Execute these workflows step-by-step, 
 
 ## Workflow: Local Code Review
 
-**Execute when remote Copilot review times out (fallback):**
+**Execute when remote Copilot review times out (fallback).**
+
+> **Reference**: Follow the review standards in `.github/instructions/code-review.instructions.md`
 
 1. **GET** PR diff using `get_pull_request_diff`
-2. **ANALYZE** the changes for:
-   - Code style and formatting issues
-   - Potential bugs or logic errors
-   - Missing error handling
-   - Security concerns
-   - Performance issues
-   - Missing tests for new functionality
-3. **IF** issues found:
+2. **READ** review instructions from `.github/instructions/code-review.instructions.md`
+3. **ANALYZE** the changes against the review checklist:
+   - Correctness: Logic errors, edge cases, error handling
+   - Standards Compliance: TypeScript strict mode, Svelte 5 runes, testing patterns
+   - Security: Input validation, P2P message validation, no hardcoded secrets
+   - Performance: Unnecessary re-renders, memory leaks, payload sizes
+   - Architecture: Pure game logic, isolated network layer, unidirectional state
+4. **IF** issues found:
    - List issues and ask user: "Found these issues during local review. Fix them?"
    - If yes: Execute **Address Review Comments** workflow with local findings
-4. **IF** no issues found:
+5. **IF** no issues found:
    - Report: "Local code review passed. No issues found."
 
 ## Workflow: Pre-Push Verification
