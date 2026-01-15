@@ -14,6 +14,9 @@ Reference for release standards, rollback, and troubleshooting.
 - **Ship small**: Frequent small releases are safer than big bang releases
 - **Fast-forward only**: Release branch is always an exact subset of main
 - **Quick rollback**: Always have a way to revert quickly
+- **Semantic versioning**: Use semver (major.minor.patch) for predictable version numbers
+- **Quality gates**: All tests must pass before release
+- **Changelog**: Auto-generated from conventional commits
 
 ## Post-Deployment Verification
 
@@ -25,12 +28,29 @@ After deployment completes, verify:
 - [ ] Create game works
 - [ ] Join game works
 - [ ] P2P connection establishes
+- [ ] Check build artifacts were created
+- [ ] Verify GitHub release was created with changelog
 
 ## Rollback Procedures
 
+### Quick Rollback (GitHub Actions Workflow)
+
+Use the automated rollback workflow for fastest rollback:
+
+1. Go to **Actions** → **Rollback Release**
+2. Click **Run workflow**
+3. Enter the target tag to rollback to (e.g., `v1.0.0`)
+4. Type `rollback` to confirm
+5. Approve the production environment deployment
+6. The workflow will:
+   - Reset the `release` branch to the target tag
+   - Create a rollback tag for tracking
+   - Trigger Cloudflare redeployment
+   - Verify the site is accessible
+
 ### Quick Rollback (Cloudflare Dashboard)
 
-For immediate rollback without code changes:
+For immediate rollback without GitHub Actions:
 
 1. Go to Cloudflare Pages dashboard
 2. Select gametime-bingo project
@@ -88,3 +108,32 @@ git push --force origin release
 2. Manually unlock via GitHub Settings → Branches → release → Edit
 3. Complete release manually (see prompt for steps)
 4. Manually re-lock the branch
+
+### Version Bump Failed
+
+If the version bump fails or creates incorrect version:
+
+1. Manually update `package.json` version
+2. Run `npm install` to update `package-lock.json`
+3. Commit changes to main
+4. Re-run release workflow
+
+### Changelog Generation Issues
+
+If changelog is empty or incorrect:
+
+1. Ensure commits follow conventional commit format:
+   - `feat: description` for features
+   - `fix: description` for bug fixes
+   - `chore: description` for maintenance
+2. Check that commits exist between last tag and current HEAD
+3. Manually create release notes if needed via GitHub UI
+
+### Build Artifacts Missing
+
+If build artifacts are not attached to release:
+
+1. Check that the `validate` job completed successfully
+2. Verify `npm run build` works locally
+3. Check artifact upload/download steps in workflow logs
+4. Manually upload artifacts to GitHub release if needed

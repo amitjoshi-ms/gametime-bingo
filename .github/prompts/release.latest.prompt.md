@@ -8,41 +8,89 @@ This prompt guides the release of changes from `main` to the `release` branch fo
 
 ## How the Release Workflow Works
 
-The release workflow automates deploying code from `main` to production:
+The release workflow automates deploying code from `main` to production with quality gates:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  User triggers workflow (gh workflow run / Actions UI)          │
+│  - Must type "release" to confirm                               │
+│  - Select version bump type (patch/minor/major)                 │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Environment approval gate (if production environment exists)   │
+│  Pre-Release Validation Job                                     │
+│  - Install dependencies                                         │
+│  - Run linter (npm run lint)                                    │
+│  - Run type check (npm run check)                               │
+│  - Run unit tests (npm run test)                                │
+│  - Build application (npm run build)                            │
+│  - Upload build artifacts                                       │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Environment approval gate (production environment)             │
 │  - Workflow pauses and waits for reviewer approval              │
 │  - Prevents unauthorized releases                               │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  1. Unlock release branch                                       │
+│  1. Determine version (semantic versioning)                     │
+│     - Read current version from package.json                    │
+│     - Bump based on input (major.minor.patch)                   │
+│     - Create tag in format vX.Y.Z                               │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  2. Update package.json version                                 │
+│     - Use npm version command                                   │
+│     - Stage changes for commit                                  │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  3. Generate changelog                                          │
+│     - Extract commits since last tag                            │
+│     - Group by type (feat, fix, chore, etc.)                    │
+│     - Format as markdown                                        │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  4. Unlock release branch                                       │
 │     - Removes branch protection via GitHub API                  │
 │     - Checks HTTP status (404 = skip, 200 = delete, else fail)  │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  2. Fast-forward merge                                          │
+│  5. Fast-forward merge                                          │
 │     - git merge --ff-only origin/main                           │
+│     - Commit version bump if changes exist                      │
 │     - Fails if release has diverged (no force overwrites)       │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  3. Create release tag                                          │
-│     - Format: yy.mdd.rev (e.g., 26.114.0)                       │
-│     - Auto-increments revision for same-day releases            │
+│  6. Create release tag and GitHub release                       │
+│     - Format: vX.Y.Z (semantic versioning)                      │
+│     - Create GitHub release with changelog                      │
+│     - Attach release notes                                      │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  4. Re-lock release branch                                      │
+│  7. Re-lock release branch                                      │
 │     - Applies branch protection via GitHub API                  │
 │     - Verifies lock_branch=true after 2s delay                  │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  8. Create and upload release artifacts                         │
+│     - Download build artifacts from validation job              │
+│     - Create tar.gz archive                                     │
+│     - Upload to GitHub release                                  │
+└─────────────────────────┬───────────────────────────────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Post-Deployment Verification Job                               │
+│  - Wait for Cloudflare Pages deployment (60s)                   │
+│  - Check production site accessibility                          │
+│  - Verify HTML content                                          │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -60,14 +108,21 @@ The release workflow automates deploying code from `main` to production:
 - All CI checks passing on `main`
 - You have admin access to the repository
 - GitHub CLI (`gh`) is authenticated
+- Commits follow [conventional commit format](https://www.conventionalcommits.org/) for changelog
 
 ## Release Process
 
 ### Option 1: GitHub CLI + Web UI (Recommended)
 
 ```powershell
-# 1. Trigger the release workflow
-gh workflow run release.yml -f confirm=release
+# 1. Trigger the release workflow with version bump type
+gh workflow run release.yml -f confirm=release -f version_bump=patch
+
+# For minor version bump (new features):
+# gh workflow run release.yml -f confirm=release -f version_bump=minor
+
+# For major version bump (breaking changes):
+# gh workflow run release.yml -f confirm=release -f version_bump=major
 
 # 2. Get the run ID
 $runId = (gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
@@ -86,66 +141,137 @@ gh run watch $runId
 
 1. Go to **Actions** → **Release to Production**
 2. Click **Run workflow**
-3. Type `release` in the confirmation field
-4. Click **Run workflow**
-5. If environment protection is enabled, approve the pending deployment
+3. Select version bump type (patch/minor/major)
+4. Type `release` in the confirmation field
+5. Click **Run workflow**
+6. If environment protection is enabled, approve the pending deployment
 
 The workflow will:
+- Run all quality gates (lint, type check, tests, build)
+- Calculate new semantic version
+- Generate changelog from conventional commits
 - Unlock the `release` branch
 - Fast-forward merge from `main`
-- Create a tag in format `yy.mdd.rev`
+- Create a tag in format `vX.Y.Z`
+- Create GitHub release with changelog
+- Attach build artifacts
 - Re-lock the `release` branch
+- Verify deployment
 
 ### Option 3: Manual Release (PowerShell)
 
+If automated workflow fails, perform manual release:
+
 ```powershell
-# 1. Unlock release branch
+# 1. Determine new version
+$currentVersion = (Get-Content package.json | ConvertFrom-Json).version
+Write-Host "Current version: $currentVersion"
+
+# Manually calculate new version (example for patch bump)
+$parts = $currentVersion -split '\.'
+$parts[2] = [int]$parts[2] + 1
+$newVersion = $parts -join '.'
+$newTag = "v$newVersion"
+
+Write-Host "New version: $newVersion"
+Write-Host "New tag: $newTag"
+
+# 2. Update package.json
+npm version $newVersion --no-git-tag-version
+
+# 3. Unlock release branch
 gh api repos/{owner}/{repo}/branches/release/protection -X DELETE
 
-# 2. Fast-forward merge
+# 4. Fast-forward merge with version commit
 git fetch origin
 git checkout release
 git merge --ff-only origin/main
+git add package.json package-lock.json
+git commit -m "chore(release): bump version to $newVersion"
 git push origin release
 
-# 3. Create tag (format: yy.mdd.rev)
-$year = Get-Date -Format "yy"
-$monthDay = (Get-Date).Month.ToString() + (Get-Date -Format "dd")
-$datePrefix = "$year.$monthDay"
-
-# Find next revision number (sort by numeric revision to handle 10+ releases/day)
-$existingTags = git tag -l "$datePrefix.*" | Sort-Object { [int]($_ -split '\.')[-1] } | Select-Object -Last 1
-if ($existingTags) {
-    $lastRev = [int]($existingTags -replace "$datePrefix\.", "")
-    $rev = $lastRev + 1
-} else {
-    $rev = 0
-}
-
-$newTag = "$datePrefix.$rev"
-git tag $newTag
+# 5. Create tag
+git tag $newTag -m "Release $newTag"
 git push origin $newTag
 
-# 4. Re-lock release branch
+# 6. Generate changelog (simplified)
+$lastTag = git describe --tags --abbrev=0 HEAD~1 2>$null
+$commits = git log "$lastTag..HEAD" --pretty=format:"%s"
+
+# 7. Create GitHub release
+gh release create $newTag --title "Release $newTag" --notes "See commits for details" --target release
+
+# 8. Re-lock release branch
 gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f allow_force_pushes=false -f allow_deletions=false
 ```
 
+## Version Bump Guidelines
+
+Choose the appropriate version bump type based on changes:
+
+- **Patch** (0.0.X): Bug fixes, minor changes, no new features
+  - Example: v1.0.0 → v1.0.1
+  
+- **Minor** (0.X.0): New features, backward-compatible changes
+  - Example: v1.0.1 → v1.1.0
+  
+- **Major** (X.0.0): Breaking changes, major rewrites
+  - Example: v1.1.0 → v2.0.0
+
+## Conventional Commit Format
+
+For automatic changelog generation, use conventional commits:
+
+```
+feat: add new game mode
+fix: correct score calculation
+chore: update dependencies
+docs: improve README
+refactor: simplify card generation
+test: add unit tests for validation
+ci: update release workflow
+```
+
+Format: `<type>: <description>`
+
+Common types:
+- `feat`: New features
+- `fix`: Bug fixes
+- `chore`: Maintenance tasks
+- `docs`: Documentation changes
+- `refactor`: Code refactoring
+- `test`: Test changes
+- `ci`: CI/CD changes
+
 ## Tag Format
 
-Tags follow the format `{yy}.{mdd}.{rev}`:
-- `yy` - Two-digit year
-- `m` - Month (1-12, no leading zero)
-- `dd` - Day (01-31, always zero-padded)
-- `rev` - Revision number starting at 0
-
-The format is unambiguous because the day is always 2 digits. Parse from right: last 2 chars = day, remaining = month.
+Tags follow semantic versioning with a `v` prefix:
+- Format: `vX.Y.Z` (e.g., v1.0.0, v1.2.3, v2.0.0)
+- X = Major version (breaking changes)
+- Y = Minor version (new features)
+- Z = Patch version (bug fixes)
 
 Examples:
-- `26.114.0` - January 14, 2026 (m=1, dd=14), first release
-- `26.114.1` - January 14, 2026, second release
-- `26.1104.0` - November 4, 2026 (m=11, dd=04), first release
-- `26.1231.0` - December 31, 2026, first release
+- `v1.0.0` - First major release
+- `v1.1.0` - Added new features
+- `v1.1.1` - Bug fix release
+- `v2.0.0` - Breaking changes
 
 ## Cloudflare Pages
 
 The `release` branch is connected to Cloudflare Pages for production deployment. After the release workflow completes, Cloudflare will automatically build and deploy the changes.
+
+## Rollback
+
+If a release has issues, use the rollback workflow:
+
+```powershell
+# Trigger rollback to a specific version
+gh workflow run rollback.yml -f tag=v1.0.0 -f confirm=rollback
+
+# Get run ID and watch
+$runId = (gh run list --workflow=rollback.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch $runId
+```
+
+See `.github/instructions/production-release.instructions.md` for detailed rollback procedures.
