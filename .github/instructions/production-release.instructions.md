@@ -14,7 +14,7 @@ Reference for release standards, rollback, and troubleshooting.
 - **Ship small**: Frequent small releases are safer than big bang releases
 - **Fast-forward only**: Release branch is always an exact subset of main
 - **Quick rollback**: Always have a way to revert quickly
-- **Semantic versioning**: Use semver (major.minor.patch) for predictable version numbers
+- **Date-based versioning**: Use format `YY.DDD.REV` for auto-calculated version numbers
 - **Quality gates**: All tests must pass before release
 - **Changelog**: Auto-generated from conventional commits
 

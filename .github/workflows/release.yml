@@ -7,15 +7,6 @@ on:
         description: 'Type "release" to confirm'
         required: true
         type: string
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-        default: patch
 
 permissions:
   contents: write
@@ -91,38 +82,26 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          # Get current version from package.json
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Current version: $CURRENT_VERSION"
+          # Date-based versioning: YY.DDD.REV
+          # YY = 2-digit year, DDD = day of year (1-366), REV = revision (0-based)
+          YEAR=$(date -u +"%y")
+          DAY=$(date -u +"%-j")  # Day of year without leading zeros
           
-          # Validate version format (must be X.Y.Z)
-          if ! echo "$CURRENT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Invalid version format in package.json: $CURRENT_VERSION"
-            echo "::error::Version must be in format X.Y.Z (e.g., 1.0.0)"
-            exit 1
+          # Find existing tags for today to determine revision
+          TAG_PREFIX="${YEAR}.${DAY}."
+          echo "Looking for existing tags with prefix: $TAG_PREFIX"
+          
+          # Get the highest revision for today's date
+          LATEST_REV=$(git tag -l "${TAG_PREFIX}*" | sed "s/${TAG_PREFIX}//" | sort -n | tail -1)
+          
+          if [ -z "$LATEST_REV" ]; then
+            REV=0
+          else
+            REV=$((LATEST_REV + 1))
           fi
           
-          # Parse version components
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          
-          # Bump version based on input
-          case "${{ github.event.inputs.version_bump }}" in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
-          
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          TAG_NAME="v${NEW_VERSION}"
+          NEW_VERSION="${YEAR}.${DAY}.${REV}"
+          TAG_NAME="${NEW_VERSION}"
           
           echo "New version: $NEW_VERSION"
           echo "Tag name: $TAG_NAME"
@@ -134,8 +113,8 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          # Get the latest semantic version tag (v*) or fall back to HEAD~10 (then first commit if needed)
-          LATEST_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || git rev-parse HEAD~10 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          # Get the latest tag (date-based format YY.DDD.REV) or fall back to HEAD~10 (then first commit if needed)
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-parse HEAD~10 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Latest tag/commit: $LATEST_TAG"
           
           # Generate changelog from commits

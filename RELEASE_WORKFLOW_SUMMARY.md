@@ -16,8 +16,7 @@ The release workflow has been completely revamped to address all requirements fr
 - Basic branch management
 
 **New Workflow:**
-- ✅ Semantic versioning (e.g., `v1.2.3`)
-- ✅ Version format validation
+- ✅ Date-based versioning (e.g., `26.14.0`) - auto-calculated
 - ✅ Pre-release validation job (lint, type check, tests, build)
 - ✅ Automatic changelog generation from conventional commits
 - ✅ Build artifact creation and upload to GitHub releases
@@ -36,7 +35,7 @@ The release workflow has been completely revamped to address all requirements fr
    - Upload build artifacts
 
 2. **release** - Main release process
-   - Determine new semantic version
+   - Determine new date-based version (YY.DDD.REV)
    - Generate changelog from commits
    - Unlock release branch
    - Fast-forward merge from main
@@ -73,10 +72,10 @@ The release workflow has been completely revamped to address all requirements fr
   - Automated version bumping
   - Consistent workflow execution
 
-- ✅ **Version numbers follow semantic versioning**
-  - Format: `vX.Y.Z` (v1.2.3)
-  - User selects bump type: patch, minor, major
-  - Follows semver principles
+- ✅ **Version numbers follow date-based versioning**
+  - Format: `YY.DDD.REV` (26.14.0)
+  - Auto-calculated from current date
+  - Revision increments for same-day releases
 
 - ✅ **Changelog is generated automatically**
   - Extracts commits since last release
@@ -102,23 +101,16 @@ The release workflow has been completely revamped to address all requirements fr
 
 **Via GitHub CLI:**
 ```powershell
-# Patch release (bug fixes)
-gh workflow run release.yml -f confirm=release -f version_bump=patch
-
-# Minor release (new features)
-gh workflow run release.yml -f confirm=release -f version_bump=minor
-
-# Major release (breaking changes)
-gh workflow run release.yml -f confirm=release -f version_bump=major
+# Trigger release (version is auto-calculated from date)
+gh workflow run release.yml -f confirm=release
 ```
 
 **Via GitHub UI:**
 1. Go to Actions → Release to Production
 2. Click "Run workflow"
-3. Select version bump type
-4. Type "release" to confirm
-5. Click "Run workflow"
-6. Approve production environment deployment when prompted
+3. Type "release" to confirm
+4. Click "Run workflow"
+5. Approve production environment deployment when prompted
 
 ## Testing Recommendations
 
@@ -155,11 +147,11 @@ Before first use, configure the following repository secret:
 
 ### First Release After Merge
 
-The first release after merging this PR will transition from date-based to semantic versioning:
+The first release after merging this PR will use date-based versioning:
 
-1. Current version in `package.json` is `0.0.0`
-2. First release should be `v1.0.0` (major bump) or `v0.1.0` (minor bump)
-3. Subsequent releases will follow semantic versioning
+1. Version is auto-calculated as `YY.DDD.REV`
+2. Example: If merged on January 14, 2026, first release will be `26.14.0`
+3. Subsequent releases on the same day will be `26.14.1`, `26.14.2`, etc.
 
 ### Conventional Commits
 
@@ -183,19 +175,17 @@ ci: update workflows
 
 ## Breaking Changes
 
-- Tag format changed from `yy.mdd.rev` to `vX.Y.Z`
-- Workflow inputs changed (added `version_bump` parameter)
+- Workflow inputs simplified (removed `version_bump` parameter - versions are auto-calculated)
 - Requires conventional commit format for optimal changelog generation
 
-### Migration from Old Tag Format
+### Tag Format
 
-The changelog generation now uses `git describe --tags --match "v*"` to find the latest semantic version tag. This means:
+Tags use date-based versioning: `YY.DDD.REV`
+- `YY` = 2-digit year
+- `DDD` = Day of year (1-366)
+- `REV` = Revision for same-day releases (starts at 0)
 
-1. **Old date-based tags** (e.g., `26.114.0`) are ignored by the changelog generator
-2. **First release** after merge will use `HEAD~10` as the baseline if no `v*` tags exist, falling back to the first commit only if `HEAD~10` is not available
-3. **Rollback tags** use the format `rollback/v1.0.0/20260115-143022` for better organization
-
-If you need to reference old releases, they remain accessible via direct tag lookup but won't appear in changelog comparisons.
+Examples: `26.14.0`, `26.14.1`, `26.200.0`
 
 ## Future Enhancements
 

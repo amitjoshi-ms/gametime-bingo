@@ -14,7 +14,6 @@ The release workflow automates deploying code from `main` to production with qua
 ┌─────────────────────────────────────────────────────────────────┐
 │  User triggers workflow (gh workflow run / Actions UI)          │
 │  - Must type "release" to confirm                               │
-│  - Select version bump type (patch/minor/major)                 │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -34,10 +33,10 @@ The release workflow automates deploying code from `main` to production with qua
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  1. Determine version (semantic versioning)                     │
-│     - Read current version from package.json                    │
-│     - Bump based on input (major.minor.patch)                   │
-│     - Create tag in format vX.Y.Z                               │
+│  1. Determine version (date-based versioning)                   │
+│     - Format: YY.DDD.REV (year, day of year, revision)          │
+│     - Auto-calculated from current date                         │
+│     - Revision increments for same-day releases                 │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -68,7 +67,7 @@ The release workflow automates deploying code from `main` to production with qua
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  6. Create release tag and GitHub release                       │
-│     - Format: vX.Y.Z (semantic versioning)                      │
+│     - Format: YY.DDD.REV (date-based versioning)                │
 │     - Create GitHub release with changelog                      │
 │     - Attach release notes                                      │
 └─────────────────────────┬───────────────────────────────────────┘
@@ -115,14 +114,8 @@ The release workflow automates deploying code from `main` to production with qua
 ### Option 1: GitHub CLI + Web UI (Recommended)
 
 ```powershell
-# 1. Trigger the release workflow with version bump type
-gh workflow run release.yml -f confirm=release -f version_bump=patch
-
-# For minor version bump (new features):
-# gh workflow run release.yml -f confirm=release -f version_bump=minor
-
-# For major version bump (breaking changes):
-# gh workflow run release.yml -f confirm=release -f version_bump=major
+# 1. Trigger the release workflow
+gh workflow run release.yml -f confirm=release
 
 # 2. Get the run ID
 $runId = (gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
@@ -141,18 +134,17 @@ gh run watch $runId
 
 1. Go to **Actions** → **Release to Production**
 2. Click **Run workflow**
-3. Select version bump type (patch/minor/major)
-4. Type `release` in the confirmation field
-5. Click **Run workflow**
-6. If environment protection is enabled, approve the pending deployment
+3. Type `release` in the confirmation field
+4. Click **Run workflow**
+5. If environment protection is enabled, approve the pending deployment
 
 The workflow will:
 - Run all quality gates (lint, type check, tests, build)
-- Calculate new semantic version
+- Calculate date-based version (YY.DDD.REV)
 - Generate changelog from conventional commits
 - Unlock the `release` branch
 - Fast-forward merge from `main`
-- Create a tag in format `vX.Y.Z`
+- Create a tag in format `YY.DDD.REV`
 - Create GitHub release with changelog
 - Attach build artifacts
 - Re-lock the `release` branch
@@ -163,15 +155,21 @@ The workflow will:
 If automated workflow fails, perform manual release:
 
 ```powershell
-# 1. Determine new version (from main branch)
-$currentVersion = (Get-Content package.json | ConvertFrom-Json).version
-Write-Host "Current version: $currentVersion"
+# 1. Determine new version (date-based: YY.DDD.REV)
+$year = (Get-Date).ToString("yy")
+$dayOfYear = (Get-Date).DayOfYear
 
-# Manually calculate new version (example for patch bump)
-$parts = $currentVersion -split '\.'
-$parts[2] = [int]$parts[2] + 1
-$newVersion = $parts -join '.'
-$newTag = "v$newVersion"
+# Find existing tags for today to determine revision
+$tagPrefix = "$year.$dayOfYear."
+$existingTags = git tag -l "$tagPrefix*"
+$rev = 0
+if ($existingTags) {
+    $maxRev = $existingTags | ForEach-Object { [int]($_ -replace $tagPrefix, '') } | Measure-Object -Maximum
+    $rev = $maxRev.Maximum + 1
+}
+
+$newVersion = "$year.$dayOfYear.$rev"
+$newTag = $newVersion
 
 Write-Host "New version: $newVersion"
 Write-Host "New tag: $newTag"
@@ -205,18 +203,26 @@ gh release create $newTag --title "Release $newTag" --notes "See commits for det
 gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f allow_force_pushes=false -f allow_deletions=false
 ```
 
-## Version Bump Guidelines
+## Date-Based Versioning
 
-Choose the appropriate version bump type based on changes:
+Versions are automatically calculated based on the current date:
 
-- **Patch** (0.0.X): Bug fixes, minor changes, no new features
-  - Example: v1.0.0 → v1.0.1
-  
-- **Minor** (0.X.0): New features, backward-compatible changes
-  - Example: v1.0.1 → v1.1.0
-  
-- **Major** (X.0.0): Breaking changes, major rewrites
-  - Example: v1.1.0 → v2.0.0
+- **Format**: `YY.DDD.REV`
+  - `YY` = 2-digit year (e.g., 26 for 2026)
+  - `DDD` = Day of year (1-366)
+  - `REV` = Revision number (0-based, increments for same-day releases)
+
+**Examples:**
+- `26.14.0` - First release on January 14, 2026
+- `26.14.1` - Second release on January 14, 2026
+- `26.15.0` - First release on January 15, 2026
+- `26.200.0` - First release on July 18, 2026
+
+**Benefits:**
+- No manual version selection needed
+- Releases are naturally ordered chronologically
+- Easy to identify when a release was made
+- Supports multiple releases per day via revision number
 
 ## Conventional Commit Format
 
@@ -245,17 +251,17 @@ Common types:
 
 ## Tag Format
 
-Tags follow semantic versioning with a `v` prefix:
-- Format: `vX.Y.Z` (e.g., v1.0.0, v1.2.3, v2.0.0)
-- X = Major version (breaking changes)
-- Y = Minor version (new features)
-- Z = Patch version (bug fixes)
+Tags use date-based versioning without a prefix:
+- Format: `YY.DDD.REV` (e.g., 26.14.0, 26.14.1, 26.200.0)
+- YY = 2-digit year
+- DDD = Day of year (1-366)
+- REV = Revision for same-day releases (starts at 0)
 
 Examples:
-- `v1.0.0` - First major release
-- `v1.1.0` - Added new features
-- `v1.1.1` - Bug fix release
-- `v2.0.0` - Breaking changes
+- `26.1.0` - First release on January 1, 2026
+- `26.14.0` - First release on January 14, 2026
+- `26.14.1` - Second release on January 14, 2026
+- `26.365.0` - First release on December 31, 2026
 
 ## Cloudflare Pages
 
