@@ -9,10 +9,10 @@
   import Game from './components/Game.svelte';
   import GameOver from './components/GameOver.svelte';
   
-  import { createRoom, joinRoom, leaveRoom, getActions } from '$lib/network/room';
+  import { createRoom, joinRoom, leaveRoom, getActions, onPeerJoin, getConnectedPeers, stopPeerDiscovery } from '$lib/network/room';
   import { setHostSession, registerHostHandlers, broadcastSyncState, getHostSession } from '$lib/network/host';
   import { registerSyncHandlers, sendPlayerJoin, sendCallNumber, clearCallbacks } from '$lib/network/sync';
-  import { createSession, addPlayer, startGame as startGameSession, callNumber as callSessionNumber } from '$lib/game/session';
+  import { createSession, addPlayer, startGame as startGameSession, callNumber as callSessionNumber, advanceTurn as advanceSessionTurn } from '$lib/game/session';
   import * as gameStore from '$lib/stores/game.svelte';
   import * as playerStore from '$lib/stores/player.svelte';
   import { saveState, loadState, clearState, type PersistedState } from '$lib/utils/storage';
@@ -56,6 +56,37 @@
     };
   });
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
+
+  /**
+   * Sends player-join message once a peer connection is established.
+   * WebRTC connections are asynchronous, so we register a callback for when
+   * a peer joins and also check if already connected.
+   * Uses a guard flag to prevent duplicate sends from race conditions.
+   */
+  function sendPlayerJoinWhenConnected(playerId: string, playerName: string): void {
+    let hasSent = false;
+    
+    const safeSend = (): void => {
+      if (hasSent) return;
+      hasSent = true;
+      sendPlayerJoin(playerId, playerName);
+    };
+    
+    // Register callback to send player-join when peer connection is established
+    onPeerJoin((_peerId) => {
+      safeSend();
+    });
+    
+    // Check if already connected (unlikely but possible if connection was fast)
+    const connectedPeers = getConnectedPeers();
+    if (connectedPeers.length > 0) {
+      safeSend();
+    }
+  }
+
   /**
    * Attempts to rejoin a previous session.
    */
@@ -76,8 +107,8 @@
       // Set local player ID
       gameStore.setLocalPlayerId(savedState.playerId);
       
-      // Send player-join to request sync state
-      sendPlayerJoin(savedState.playerId, savedState.playerName);
+      // Send player-join when connected to host
+      sendPlayerJoinWhenConnected(savedState.playerId, savedState.playerName);
       
       // Recover card if we have the seed
       if (savedState.cardSeed) {
@@ -175,8 +206,8 @@
       // Set local player ID for store
       gameStore.setLocalPlayerId(playerId);
       
-      // Send player-join message to host
-      sendPlayerJoin(playerId, name);
+      // Send player-join when connected to host
+      sendPlayerJoinWhenConnected(playerId, name);
       
       // Update URL without reload
       const newUrl = new URL(window.location.href);
@@ -207,6 +238,9 @@
     if (!session || !isHost) return;
     
     try {
+      // Stop looking for new peers once game starts
+      stopPeerDiscovery();
+      
       // Start the game
       const startedSession = startGameSession(session);
       setHostSession(startedSession);
@@ -262,12 +296,18 @@
       sendCallNumber(playerStore.getPlayerId(), number);
     } else {
       // Host processes directly
-      const session = getHostSession();
+      let session = getHostSession();
       if (session) {
-        const updatedSession = callSessionNumber(session, number);
-        setHostSession(updatedSession);
-        gameStore.callNumber(number);
-        gameStore.advanceTurn();
+        // Add the called number
+        session = callSessionNumber(session, number);
+        
+        // Advance turn using the helper function
+        session = advanceSessionTurn(session);
+        const nextTurnIndex = session.currentTurnIndex;
+        
+        // Update host session state
+        setHostSession(session);
+        gameStore.setSession(session);
         
         // Mark on local card
         playerStore.markNumber(number);
@@ -275,7 +315,6 @@
         // Broadcast to others
         const actions = getActions();
         if (actions) {
-          const nextTurnIndex = (session.currentTurnIndex + 1) % session.players.length;
           actions.sendNumberCalled({
             type: 'num-called',
             number,
