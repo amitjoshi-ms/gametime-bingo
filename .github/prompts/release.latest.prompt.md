@@ -163,7 +163,7 @@ The workflow will:
 If automated workflow fails, perform manual release:
 
 ```powershell
-# 1. Determine new version
+# 1. Determine new version (from main branch)
 $currentVersion = (Get-Content package.json | ConvertFrom-Json).version
 Write-Host "Current version: $currentVersion"
 
@@ -176,16 +176,16 @@ $newTag = "v$newVersion"
 Write-Host "New version: $newVersion"
 Write-Host "New tag: $newTag"
 
-# 2. Update package.json
-npm version $newVersion --no-git-tag-version
-
-# 3. Unlock release branch
+# 2. Unlock release branch
 gh api repos/{owner}/{repo}/branches/release/protection -X DELETE
 
-# 4. Fast-forward merge with version commit
+# 3. Fast-forward merge main to release
 git fetch origin
 git checkout release
 git merge --ff-only origin/main
+
+# 4. Update package.json on release branch and commit
+npm version $newVersion --no-git-tag-version
 git add package.json package-lock.json
 git commit -m "chore(release): bump version to $newVersion"
 git push origin release

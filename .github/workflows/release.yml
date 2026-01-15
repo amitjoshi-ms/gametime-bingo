@@ -82,6 +82,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
       - name: Determine version
         id: version
         run: |
@@ -125,22 +131,11 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
-      - name: Setup Node.js for version update
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Update package.json version
-        run: |
-          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
-          git add package.json package-lock.json
-
       - name: Generate changelog
         id: changelog
         run: |
-          # Get the latest semantic version tag (v*) or fall back to first commit
-          LATEST_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          # Get the latest semantic version tag (v*) or fall back to HEAD~10 (then first commit if needed)
+          LATEST_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || git rev-parse HEAD~10 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Latest tag/commit: $LATEST_TAG"
           
           # Generate changelog from commits
@@ -149,9 +144,9 @@ jobs:
           echo "**Release Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> CHANGELOG_TEMP.md
           echo "" >> CHANGELOG_TEMP.md
           
-          # Group commits by type (feat, fix, chore, etc.) - supports scoped commits like feat(scope):
+          # Group commits by type (using simple patterns - ^feat matches both feat: and feat(scope):)
           echo "## 🚀 Features" >> CHANGELOG_TEMP.md
-          FEATURES=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^feat" --grep="^feat(" --extended-regexp 2>/dev/null || true)
+          FEATURES=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^feat" 2>/dev/null || true)
           if [ -n "$FEATURES" ]; then
             echo "$FEATURES" | sed 's/^/- /' >> CHANGELOG_TEMP.md
           else
@@ -161,7 +156,7 @@ jobs:
           echo "" >> CHANGELOG_TEMP.md
           
           echo "## 🐛 Bug Fixes" >> CHANGELOG_TEMP.md
-          FIXES=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^fix" --grep="^fix(" --extended-regexp 2>/dev/null || true)
+          FIXES=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^fix" 2>/dev/null || true)
           if [ -n "$FIXES" ]; then
             echo "$FIXES" | sed 's/^/- /' >> CHANGELOG_TEMP.md
           else
@@ -171,7 +166,7 @@ jobs:
           echo "" >> CHANGELOG_TEMP.md
           
           echo "## 📝 Other Changes" >> CHANGELOG_TEMP.md
-          OTHER=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^chore" --grep="^docs" --grep="^refactor" --grep="^test" --grep="^ci" --extended-regexp 2>/dev/null || true)
+          OTHER=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --grep="^chore\|^docs\|^refactor\|^test\|^ci" --extended-regexp 2>/dev/null || true)
           if [ -n "$OTHER" ]; then
             echo "$OTHER" | sed 's/^/- /' >> CHANGELOG_TEMP.md
           else
@@ -203,7 +198,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fast-forward release to main
+      - name: Fast-forward release to main and update version
         run: |
           git checkout release
           if ! git merge --ff-only origin/main; then
@@ -212,8 +207,12 @@ jobs:
             exit 1
           fi
           
+          # Now update version on the release branch
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+          git add package.json package-lock.json
+          
           # Commit version bump if there were changes; otherwise verify version consistency
-          if ! git diff --quiet; then
+          if ! git diff --staged --quiet; then
             git commit -m "chore(release): bump version to ${{ steps.version.outputs.version }}"
           else
             # No changes detected; verify that package.json already matches the expected release version

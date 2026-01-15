@@ -37,10 +37,10 @@ The release workflow has been completely revamped to address all requirements fr
 
 2. **release** - Main release process
    - Determine new semantic version
-   - Update package.json version
    - Generate changelog from commits
    - Unlock release branch
    - Fast-forward merge from main
+   - Update package.json version (on release branch)
    - Create release tag and GitHub release
    - Lock release branch
    - Download and archive build artifacts
@@ -182,8 +182,6 @@ Before first use, configure the following repository secret:
 
    > **Note**: This secret should also be documented in the main README.md for new contributors.
    > Without this secret, the post-deployment verification will fail with a helpful error message.
-
-Without this secret, the post-deployment verification will fail with a helpful error message.
 
 ### First Release After Merge
 
