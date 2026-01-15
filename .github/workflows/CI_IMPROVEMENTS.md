@@ -11,7 +11,7 @@ The CI workflow has been revamped to improve build reliability, speed, and cover
 - **Impact**: Eliminates engine compatibility warnings and ensures proper dependency installation
 
 ### 2. Security Fix for actions/download-artifact
-- **Issue**: CVE-2024-XXXXX - Arbitrary File Write via artifact extraction
+- **Issue**: Potential arbitrary file write vulnerability during artifact extraction
 - **Fix**: Updated `actions/download-artifact` from `@v4` to `@v4.1.3`
 - **Impact**: Prevents potential arbitrary file write vulnerability during artifact downloads
 

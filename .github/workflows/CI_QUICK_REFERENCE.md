@@ -193,7 +193,7 @@ Before submitting a PR:
 
 ## Getting Help
 
-- Check [CI_IMPROVEMENTS.md](./.github/workflows/CI_IMPROVEMENTS.md) for detailed documentation
+- Check [CI_IMPROVEMENTS.md](./CI_IMPROVEMENTS.md) for detailed documentation
 - Check workflow logs in GitHub Actions for error details
 - Download artifacts for debugging test failures
 - Ask in PR comments if you need help interpreting CI failures
