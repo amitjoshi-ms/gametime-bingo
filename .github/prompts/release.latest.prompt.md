@@ -33,7 +33,7 @@ gh run view $runId --web
 gh run watch $runId
 
 # 5. Re-lock release branch (ALWAYS - success or failure!)
-gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null'
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
 ```
 
 > ⚠️ **Important:** Always re-lock the branch in step 5, even if the workflow fails!
@@ -53,7 +53,7 @@ gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url' | xargs 
 gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 
 # 5. Re-lock release branch (ALWAYS - success or failure!)
-gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null'
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
 ```
 
 > ⚠️ **Important:** Always re-lock the branch in step 5, even if the workflow fails!
@@ -121,7 +121,7 @@ gh run view $runId --web
 gh run watch $runId
 
 # 5. Re-lock release branch (ALWAYS - success or failure!)
-gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null'
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
 ```
 
 **For Bash/Zsh:**
@@ -140,7 +140,7 @@ gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url' | xargs 
 gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 
 # 5. Re-lock release branch (ALWAYS - success or failure!)
-gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null'
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
 ```
 
 > **Note:** Environment deployment approvals must be done via the GitHub web UI.
