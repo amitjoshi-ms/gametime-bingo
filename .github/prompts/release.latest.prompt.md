@@ -1,8 +1,12 @@
 ---
 description: 'Guide for releasing changes from main to production via release branch'
 tools:
-  - bash
+  - execute
   - github
+  - fetch
+  - vscode
+  - read
+  - edit
 ---
 
 # Release Latest Changes to Production
@@ -10,16 +14,51 @@ tools:
 ## Quick Start
 
 **Most Common Path: Automated Release**
-```bash
-# 1. Trigger release workflow
+
+> **Note:** The workflow requires manual branch unlock/lock because `GITHUB_TOKEN` lacks admin permissions.
+>
+> **Placeholder:** Replace `{owner}/{repo}` with your repository (e.g., `myorg/gametime-bingo`).
+
+**For PowerShell:**
+```powershell
+# 1. Unlock release branch
+gh api repos/{owner}/{repo}/branches/release/protection -X DELETE
+
+# 2. Trigger release workflow
 gh workflow run release.yml -f confirm=release
 
-# 2. Open in browser to approve
-gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url' | xargs open
+# 3. Open in browser to approve deployment
+$runId = (gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run view $runId --web
 
-# 3. Watch progress
-gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+# 4. After approving, watch progress
+gh run watch $runId
+
+# 5. Re-lock release branch (ALWAYS - success or failure!)
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
 ```
+
+> ⚠️ **Important:** Always re-lock the branch in step 5, even if the workflow fails!
+
+**For Bash/Zsh:**
+```bash
+# 1. Unlock release branch
+gh api repos/{owner}/{repo}/branches/release/protection -X DELETE
+
+# 2. Trigger release workflow
+gh workflow run release.yml -f confirm=release
+
+# 3. Open in browser to approve
+gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url' | xargs open  # macOS
+
+# 4. Watch progress
+gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+
+# 5. Re-lock release branch (ALWAYS - success or failure!)
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
+```
+
+> ⚠️ **Important:** Always re-lock the branch in step 5, even if the workflow fails!
 
 ## Overview
 
@@ -45,19 +84,21 @@ Before triggering a release, ensure:
 
 ## Release Workflow
 
-The automated workflow handles:
+The release process combines manual branch management with automated quality gates:
 
-1. **Quality Gates** - Runs lint, type check, tests, and build
-2. **Version Calculation** - Auto-calculates date-based version (YY.MDD.REV)
-3. **Changelog Generation** - Extracts commits since last tag, groups by type
-4. **Branch Management** - Safely unlocks, merges, and re-locks `release` branch
-5. **GitHub Release** - Creates tag and release with changelog + artifacts
-6. **Deployment** - Cloudflare Pages auto-deploys from `release` branch
-7. **Verification** - Validates production site is accessible
+1. **Unlock Branch** - Manual CLI command (workflow lacks admin permissions)
+2. **Quality Gates** - Workflow runs lint, type check, tests, and build
+3. **Version Calculation** - Workflow auto-calculates date-based version (YY.MDD.REV)
+4. **Changelog Generation** - Workflow extracts commits since last tag, groups by type
+5. **Branch Merge** - Workflow fast-forwards `release` to `main`
+6. **GitHub Release** - Workflow creates tag and release with changelog + artifacts
+7. **Deployment** - Cloudflare Pages auto-deploys from `release` branch
+8. **Verification** - Workflow validates production site is accessible
+9. **Lock Branch** - Manual CLI command to re-protect the branch
 
 **Flow:**
 ```
-Trigger → Validate → Approve → Version → Merge → Tag → Deploy → Verify
+Unlock → Trigger → Validate → Approve → Version → Merge → Tag → Deploy → Verify → Lock
 ```
 
 **Safety:** Fast-forward only merge ensures `release` is always a subset of `main` (no divergence).
@@ -68,28 +109,40 @@ Trigger → Validate → Approve → Version → Merge → Tag → Deploy → Ve
 
 **For PowerShell:**
 ```powershell
-# Trigger release
+# 1. Unlock release branch
+gh api repos/{owner}/{repo}/branches/release/protection -X DELETE
+
+# 2. Trigger release
 gh workflow run release.yml -f confirm=release
 
-# Get run ID and open in browser for approval
+# 3. Get run ID and open in browser for approval
 $runId = (gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 gh run view $runId --web
 
-# After approving, watch progress
+# 4. After approving, watch progress
 gh run watch $runId
+
+# 5. Re-lock release branch (ALWAYS - success or failure!)
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
 ```
 
 **For Bash/Zsh:**
 ```bash
-# Trigger release
+# 1. Unlock release branch
+gh api repos/{owner}/{repo}/branches/release/protection -X DELETE
+
+# 2. Trigger release
 gh workflow run release.yml -f confirm=release
 
-# Get run URL and open for approval
+# 3. Get run URL and open for approval
 gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url' | xargs open  # macOS
 # OR: xdg-open $(gh run list --workflow=release.yml --limit 1 --json url --jq '.[0].url')  # Linux
 
-# Watch progress
+# 4. Watch progress
 gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+
+# 5. Re-lock release branch (ALWAYS - success or failure!)
+gh api repos/{owner}/{repo}/branches/release/protection -X PUT -f lock_branch=true -f enforce_admins=true -f required_status_checks='null' -f restrictions='null' -f required_pull_request_reviews='null' -f allow_force_pushes=false -f allow_deletions=false
 ```
 
 > **Note:** Environment deployment approvals must be done via the GitHub web UI.
